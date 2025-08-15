@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>⋆</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: black;
+      overflow: hidden;
+      color: white;
+      font-family: "Cormorant Garamond", serif;
+    }
+    canvas {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #links {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      z-index: 1;
+    }
+    #links ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    #links li {
+      margin-bottom: 0.5rem;
+    }
+    #links a {
+      color: white;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<nav id="links">
+  <ul>
+    <li><a href="bedrock.html">bedrock</a></li>
+    <li><a href="flowstone.html">flowstone</a></li>
+    <li><a href="john.html">john</a></li>
+    <li><a href="salmagundi.html">salmagundi</a></li>
+  </ul>
+</nav>
+<script>
+  const canvas = document.getElementById("stars");
+  const ctx = canvas.getContext("2d");
+  let stars = [];
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    generateStars();
+  }
+
+  function generateStars() {
+    stars = [];
+    const starCount = Math.floor(canvas.width * canvas.height / 800);
+    for (let i = 0; i < starCount; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 1.2 + 0.3,
+        opacity: Math.random() * 0.6 + 0.4,
+        speed: Math.random() * 0.05 + 0.02,
+        twinkle: Math.random() * 0.005 + 0.001
+      });
+    }
+  }
+
+  function drawStars() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let s of stars) {
+      s.opacity += (Math.random() - 0.5) * s.twinkle;
+      s.opacity = Math.max(0.1, Math.min(1, s.opacity));
+      s.y += s.speed;
+      if (s.y > canvas.height) s.y = 0;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size, 0, 2 * Math.PI);
+      ctx.fillStyle = `rgba(255, 255, 255, ${s.opacity})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(drawStars);
+  }
+
+  window.addEventListener("resize", resizeCanvas);
+  window.addEventListener("load", () => {
+    resizeCanvas();
+    drawStars();
+  });
+</script>
+</body>
+</html>

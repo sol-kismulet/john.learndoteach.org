@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fouillard Web Exercise</title>
+    <script src="https://unpkg.com/vexflow@3.0.9/releases/vexflow-min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@magenta/music@1.23.1/es6/core.js"></script>
+    <style>
+      body {
+        margin: 0;
+        background: black;
+        color: white;
+        font-family: "Cormorant Garamond", serif;
+        font-size: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2rem;
+        height: 100vh;
+      }
+      #notation {
+        margin-bottom: 2rem;
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+      }
+      #notation svg {
+        width: 100%;
+        max-width: 500px;
+        height: auto;
+        display: block;
+      }
+      button {
+        background: none;
+        border: 1px solid #666;
+        color: #ddd;
+        font-family: inherit;
+        font-size: 1.2rem;
+        padding: 0.5em 1em;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 style="margin: 0">Fouillard Exercise – A String</h1>
+    <div id="notation"></div>
+    <button onclick="playExercise()">Play</button>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const VF = Vex.Flow;
+        const div = document.getElementById("notation");
+        const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
+
+        renderer.resize(500, 200);
+        const context = renderer.getContext();
+        const stave = new VF.Stave(10, 40, 400);
+        stave.addClef("bass").addKeySignature("C");
+        stave.setContext(context).draw();
+
+        const notes = [
+          new VF.StaveNote({ clef: "bass", keys: ["c/4"], duration: "8" }),
+          new VF.StaveNote({
+            clef: "bass",
+            keys: ["bb/3"],
+            duration: "8",
+          }).addAccidental(0, new VF.Accidental("b")),
+          new VF.StaveNote({ clef: "bass", keys: ["c/4"], duration: "8" }),
+          new VF.StaveNote({
+            clef: "bass",
+            keys: ["bb/3"],
+            duration: "8",
+          }).addAccidental(0, new VF.Accidental("b")),
+          new VF.StaveNote({ clef: "bass", keys: ["c/4"], duration: "8" }),
+          new VF.StaveNote({
+            clef: "bass",
+            keys: ["bb/3"],
+            duration: "8",
+          }).addAccidental(0, new VF.Accidental("b")),
+          new VF.StaveNote({ clef: "bass", keys: ["c/4"], duration: "8" }),
+          new VF.StaveNote({
+            clef: "bass",
+            keys: ["bb/3"],
+            duration: "8",
+          }).addAccidental(0, new VF.Accidental("b")),
+        ];
+
+        const slur = new VF.StaveTie({
+          first_note: notes[0],
+          last_note: notes[7],
+          first_indices: [0],
+          last_indices: [0],
+        });
+
+        const voice = new VF.Voice({ num_beats: 4, beat_value: 4 });
+        voice.addTickables(notes);
+
+        new VF.Formatter().joinVoices([voice]).format([voice], 400);
+        voice.draw(context, stave);
+        slur.setContext(context).draw();
+
+        window.playExercise = function () {
+          const synth = new Tone.Synth().toDestination();
+          const sequence = [
+            "C4",
+            "Bb3",
+            "C4",
+            "Bb3",
+            "C4",
+            "Bb3",
+            "C4",
+            "Bb3",
+          ];
+          const now = Tone.now();
+          sequence.forEach((note, i) => {
+            synth.triggerAttackRelease(note, "8n", now + i * 0.5);
+          });
+        };
+      });
+    </script>
+  </body>
+</html>
