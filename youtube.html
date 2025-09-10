@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>youtube looper</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: "Cormorant Garamond", serif;
+      font-size: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      height: 100vh;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    label {
+      font-size: 1.2rem;
+    }
+
+    input {
+      padding: 0.25em 0.5em;
+      font-size: 1rem;
+      font-family: inherit;
+      background: black;
+      color: white;
+      border: 1px solid #666;
+    }
+
+    button {
+      background: none;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 1.2rem;
+      padding: 0.5em 1em;
+      cursor: pointer;
+    }
+
+    .feather {
+      width: 2em;
+      height: 2em;
+    }
+
+    input[type="range"] {
+      width: 10em;
+    }
+
+    #player {
+      width: 0;
+      height: 0;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div id="title" style="display:flex;align-items:center;gap:0.4rem;font-size:3rem;">
+    <span>youtube looper</span>
+    <img src="feather.svg" alt="feather" class="feather">
+  </div>
+
+  <div id="player"></div>
+
+  <div class="controls">
+    <div id="loops">
+      <div class="loop">
+        <label>start <input class="start" type="text" value="0:00" size="5"></label>
+        <label>end <input class="end" type="text" value="0:10" size="5"></label>
+      </div>
+    </div>
+    <div>
+      <button id="add-loop">+</button>
+    </div>
+    <div>
+      <label style="margin-right:0.5rem;">speed <span id="speed-display">1x</span></label>
+      <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1">
+    </div>
+    <div>
+      <button id="play-btn">play piece</button>
+    </div>
+  </div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    let player;
+    let loopActive = false;
+    let playActive = false;
+    let loopInterval = null;
+    let currentLoopIndex = null;
+
+    const loopsContainer = document.getElementById('loops');
+    const addLoopBtn = document.getElementById('add-loop');
+    const playBtn = document.getElementById('play-btn');
+    const speedInput = document.getElementById('speed');
+    const speedDisplay = document.getElementById('speed-display');
+
+    function parseTime(t) {
+      const parts = t.split(':');
+      if (parts.length === 1) return parseFloat(parts[0]) || 0;
+      return parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    let loops = [];
+
+    function setupLoops() {
+      loops = Array.from(loopsContainer.querySelectorAll('.loop')).map((el, i) => {
+        const start = el.querySelector('.start');
+        const end = el.querySelector('.end');
+        let btn = el.querySelector('.loop-btn');
+        if (!btn) {
+          btn = document.createElement('button');
+          btn.textContent = 'loop section';
+          btn.className = 'loop-btn';
+          while (el.lastChild && el.lastChild.nodeType === Node.TEXT_NODE) {
+            el.removeChild(el.lastChild);
+          }
+          el.appendChild(btn);
+        }
+        btn.dataset.index = i;
+        btn.addEventListener('click', () => handleLoopButton(i));
+        return { start, end, button: btn };
+      });
+    }
+
+    function stopLoop() {
+      if (loopInterval) {
+        clearInterval(loopInterval);
+        loopInterval = null;
+      }
+      if (currentLoopIndex !== null) {
+        loops[currentLoopIndex].button.textContent = 'loop section';
+      }
+      loopActive = false;
+      currentLoopIndex = null;
+    }
+
+    function startLoop(i) {
+      playActive = false;
+      playBtn.textContent = 'play piece';
+      player.pauseVideo();
+      currentLoopIndex = i;
+      const start = parseTime(loops[i].start.value);
+      player.seekTo(start, true);
+      player.playVideo();
+      loopInterval = setInterval(() => {
+        const e = parseTime(loops[i].end.value);
+        if (player.getCurrentTime() >= e) {
+          player.seekTo(start, true);
+        }
+      }, 50);
+      loops[i].button.textContent = 'stop';
+      loopActive = true;
+    }
+
+    function handleLoopButton(i) {
+      if (loopActive && currentLoopIndex === i) {
+        stopLoop();
+      } else {
+        stopLoop();
+        startLoop(i);
+      }
+    }
+
+    addLoopBtn.addEventListener('click', () => {
+      const last = loops[loops.length - 1];
+      const startVal = last.end.value;
+      const startSec = parseTime(startVal);
+      const endSec = startSec + 10;
+
+      const loopDiv = document.createElement('div');
+      loopDiv.className = 'loop';
+
+      const startLabel = document.createElement('label');
+      startLabel.textContent = 'start ';
+      const startInput = document.createElement('input');
+      startInput.type = 'text';
+      startInput.size = 5;
+      startInput.className = 'start';
+      startInput.value = startVal;
+      startLabel.appendChild(startInput);
+
+      const endLabel = document.createElement('label');
+      endLabel.textContent = 'end ';
+      const endInput = document.createElement('input');
+      endInput.type = 'text';
+      endInput.size = 5;
+      endInput.className = 'end';
+      endInput.value = formatTime(endSec);
+      endLabel.appendChild(endInput);
+
+      const loopButton = document.createElement('button');
+      loopButton.textContent = 'loop section';
+      loopButton.className = 'loop-btn';
+
+      loopDiv.appendChild(startLabel);
+      loopDiv.appendChild(endLabel);
+      loopDiv.appendChild(loopButton);
+      loopsContainer.appendChild(loopDiv);
+      const index = loops.length;
+      loopButton.dataset.index = index;
+      loopButton.addEventListener('click', () => handleLoopButton(index));
+      loops.push({ start: startInput, end: endInput, button: loopButton });
+    });
+
+    playBtn.addEventListener('click', () => {
+      if (!playActive) {
+        stopLoop();
+        player.seekTo(0, true);
+        player.playVideo();
+        playBtn.textContent = 'stop';
+        playActive = true;
+      } else {
+        player.pauseVideo();
+        playBtn.textContent = 'play piece';
+        playActive = false;
+      }
+    });
+
+    speedInput.addEventListener('input', () => {
+      const r = parseFloat(speedInput.value);
+      player.setPlaybackRate(r);
+      speedDisplay.textContent = r.toFixed(2) + 'x';
+    });
+
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        height: '0',
+        width: '0',
+        videoId: 'dQw4w9WgXcQ',
+        playerVars: { controls: 0, origin: window.location.origin },
+        events: {
+          onReady: () => {
+            setupLoops();
+          }
+        }
+      });
+    }
+    window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+  </script>
+</body>
+</html>
