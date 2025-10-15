@@ -2,403 +2,72 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>⋆</title>
+  <title>songs</title>
   <style>
-    html, body {
+    body {
       margin: 0;
-      padding: 0;
-      height: 100%;
-      background: black;
-      overflow: hidden;
-      color: white;
+      padding: 2rem 1.5rem 4rem;
       font-family: "Cormorant Garamond", serif;
+      background: #000;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
     }
 
-    canvas {
-      display: block;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+    main {
+      width: min(26rem, 100%);
     }
 
-    #stars {
-      z-index: 0;
+    h1 {
+      margin: 0 0 1.5rem;
+      font-size: 2rem;
+      text-transform: lowercase;
+      letter-spacing: 0.08em;
+      font-weight: 500;
     }
 
-    #detections {
-      z-index: 1;
-      pointer-events: none;
-    }
-
-    #links {
-      position: absolute;
-      top: 1rem;
-      left: 1rem;
-      z-index: 2;
-      background: rgba(0, 0, 0, 0.45);
-      padding: 0.75rem 1rem;
-      border-radius: 0.75rem;
-      backdrop-filter: blur(6px);
-    }
-
-    #links ul {
+    ul {
       list-style: none;
-      margin: 0;
       padding: 0;
-    }
-
-    #links li {
-      margin-bottom: 0.5rem;
-    }
-
-    #links li:last-child {
-      margin-bottom: 0;
-    }
-
-    #links a {
-      color: white;
-      text-decoration: none;
-    }
-
-    #control-panel {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      z-index: 2;
-      width: min(22rem, 90vw);
-      background: rgba(0, 0, 0, 0.6);
-      padding: 1rem 1.25rem;
-      border-radius: 0.75rem;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 0 18px rgba(0, 0, 0, 0.35);
-    }
-
-    #control-panel h2 {
-      margin: 0 0 0.75rem;
-      font-size: 1.2rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-
-    .control {
+      margin: 0;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 0.6rem;
+      gap: 0.75rem;
     }
 
-    .control label {
-      grid-column: 1 / 2;
-      font-size: 0.9rem;
+    a {
+      color: inherit;
+      text-decoration: none;
+      padding: 0.4rem 0.5rem 0.4rem 0;
+      display: block;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      transition: color 0.2s ease, border-color 0.2s ease;
     }
 
-    .control input[type="range"] {
-      grid-column: 2 / 3;
-      width: 100%;
-      accent-color: #d5c7ff;
-    }
-
-    .control output {
-      grid-column: 3 / 4;
-      text-align: right;
-      min-width: 3rem;
-      font-variant-numeric: tabular-nums;
-      font-size: 0.9rem;
+    a:hover,
+    a:focus {
       color: #d8d8ff;
-    }
-
-    .control-note {
-      margin: 0.75rem 0 0;
-      font-size: 0.85rem;
-      line-height: 1.35;
-      color: rgba(221, 221, 255, 0.8);
+      border-color: rgba(216, 216, 255, 0.4);
     }
   </style>
 </head>
 <body>
-<canvas id="stars" class="canvas-layer"></canvas>
-<canvas id="detections" class="canvas-layer"></canvas>
-<nav id="links">
-  <ul>
-    <li><a href="amazing-grace.html">amazing grace</a></li>
-    <li><a href="bedrock.html">bedrock</a></li>
-    <li><a href="flowstone.html">flowstone</a></li>
-    <li><a href="handelsonatagminor.html">handel sonata g minor</a></li>
-    <li><a href="if-i-die-tomorrow.html">if i die tomorrow</a></li>
-    <li><a href="let-it-be-me.html">let it be me</a></li>
-    <li><a href="make-you-feel-my-love.html">make you feel my love</a></li>
-    <li><a href="rest.html">rest</a></li>
-    <li><a href="salmagundi.html">salmagundi</a></li>
-    <li><a href="john.html">john</a></li>
-    <li><a href="spiegel-im-spiegel.html">spiegel im spiegel</a></li>
-    <li><a href="spiegel-im-spiegel-piano.html">spiegel im spiegel (piano accompaniment)</a></li>
-  </ul>
-</nav>
-<section id="control-panel">
-  <h2>star detection</h2>
-  <div class="control">
-    <label for="brightness-threshold">brightness threshold</label>
-    <input type="range" id="brightness-threshold" min="0" max="255" step="1" value="180">
-    <output id="brightness-threshold-value">180</output>
-  </div>
-  <div class="control">
-    <label for="local-max-radius">local max radius</label>
-    <input type="range" id="local-max-radius" min="1" max="6" step="1" value="2">
-    <output id="local-max-radius-value">2 px</output>
-  </div>
-  <div class="control">
-    <label for="min-distance">minimum separation</label>
-    <input type="range" id="min-distance" min="0" max="20" step="1" value="6">
-    <output id="min-distance-value">6 px</output>
-  </div>
-  <div class="control">
-    <label for="contrast-threshold">contrast threshold</label>
-    <input type="range" id="contrast-threshold" min="0" max="200" step="1" value="18">
-    <output id="contrast-threshold-value">18</output>
-  </div>
-  <p class="control-note">Raise the contrast threshold if diffuse regions still sparkle.</p>
-</section>
-<script>
-  const ANNULUS_INNER_OFFSET = 1;
-  const ANNULUS_OUTER_OFFSET = 4;
-  const DETECTION_INTERVAL_MS = 400;
-
-  const canvas = document.getElementById("stars");
-  const overlay = document.getElementById("detections");
-  const ctx = canvas.getContext("2d");
-  const overlayCtx = overlay.getContext("2d");
-
-  const controls = new Map([
-    ["brightnessThreshold", document.getElementById("brightness-threshold")],
-    ["localMaxRadius", document.getElementById("local-max-radius")],
-    ["minDistance", document.getElementById("min-distance")],
-    ["contrastThreshold", document.getElementById("contrast-threshold")],
-  ]);
-
-  const controlOutputs = new Map([
-    ["brightnessThreshold", document.getElementById("brightness-threshold-value")],
-    ["localMaxRadius", document.getElementById("local-max-radius-value")],
-    ["minDistance", document.getElementById("min-distance-value")],
-    ["contrastThreshold", document.getElementById("contrast-threshold-value")],
-  ]);
-
-  controls.forEach((input, key) => {
-    const output = controlOutputs.get(key);
-    if (output) {
-      output.textContent = formatControlValue(key, Number(input.value));
-    }
-    input.addEventListener("input", () => {
-      if (output) {
-        output.textContent = formatControlValue(key, Number(input.value));
-      }
-      scheduleDetection();
-    });
-  });
-
-  let stars = [];
-  let lastDetectionTimestamp = -Infinity;
-  let detectionScheduled = true;
-
-  function formatControlValue(key, value) {
-    if (key === "localMaxRadius" || key === "minDistance") {
-      return `${Math.round(value)} px`;
-    }
-    return Math.round(value);
-  }
-
-  function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    overlay.width = window.innerWidth;
-    overlay.height = window.innerHeight;
-    generateStars();
-    scheduleDetection();
-  }
-
-  function generateStars() {
-    stars = [];
-    const area = canvas.width * canvas.height;
-    const starCount = Math.max(50, Math.floor(area / 800));
-    for (let i = 0; i < starCount; i++) {
-      stars.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        size: Math.random() * 1.3 + 0.4,
-        opacity: Math.random() * 0.6 + 0.4,
-        speed: Math.random() * 0.05 + 0.02,
-        twinkle: Math.random() * 0.01 + 0.002,
-      });
-    }
-  }
-
-  function drawStars(timestamp) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (const star of stars) {
-      star.opacity += (Math.random() - 0.5) * star.twinkle;
-      star.opacity = Math.max(0.1, Math.min(1, star.opacity));
-      star.y += star.speed;
-      if (star.y > canvas.height) {
-        star.y = 0;
-        star.x = Math.random() * canvas.width;
-      }
-      ctx.beginPath();
-      ctx.arc(star.x, star.y, star.size, 0, 2 * Math.PI);
-      ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
-      ctx.fill();
-    }
-
-    if (detectionScheduled || timestamp - lastDetectionTimestamp > DETECTION_INTERVAL_MS) {
-      runDetection();
-      detectionScheduled = false;
-      lastDetectionTimestamp = timestamp;
-    }
-
-    requestAnimationFrame(drawStars);
-  }
-
-  function scheduleDetection() {
-    detectionScheduled = true;
-  }
-
-  function runDetection() {
-    if (canvas.width === 0 || canvas.height === 0) {
-      return;
-    }
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const detected = detectStars(imageData);
-    drawDetections(detected);
-  }
-
-  function detectStars(imageData) {
-    const { width, height, data } = imageData;
-    const brightnessThreshold = Number(controls.get("brightnessThreshold").value);
-    const localMaxRadius = Math.max(1, Math.round(Number(controls.get("localMaxRadius").value)));
-    const minDistance = Math.max(0, Number(controls.get("minDistance").value));
-    const contrastThreshold = Number(controls.get("contrastThreshold").value);
-
-    const luminances = new Float32Array(width * height);
-    for (let i = 0, j = 0; i < data.length; i += 4, j++) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      luminances[j] = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    }
-
-    const localMaxRadiusSq = localMaxRadius * localMaxRadius;
-    const ringInner = localMaxRadius + ANNULUS_INNER_OFFSET;
-    const ringOuter = localMaxRadius + ANNULUS_OUTER_OFFSET;
-    const ringInnerSq = ringInner * ringInner;
-    const ringOuterSq = ringOuter * ringOuter;
-    const margin = Math.max(localMaxRadius, ringOuter);
-    const minDistanceSq = minDistance * minDistance;
-
-    const stars = [];
-
-    for (let y = margin; y < height - margin; y++) {
-      for (let x = margin; x < width - margin; x++) {
-        const index = y * width + x;
-        const centerLum = luminances[index];
-        if (centerLum < brightnessThreshold) {
-          continue;
-        }
-
-        let isLocalMax = true;
-        for (let dy = -localMaxRadius; dy <= localMaxRadius && isLocalMax; dy++) {
-          for (let dx = -localMaxRadius; dx <= localMaxRadius; dx++) {
-            if (dx === 0 && dy === 0) {
-              continue;
-            }
-            if (dx * dx + dy * dy > localMaxRadiusSq) {
-              continue;
-            }
-            const neighborIndex = (y + dy) * width + (x + dx);
-            if (luminances[neighborIndex] >= centerLum) {
-              isLocalMax = false;
-              break;
-            }
-          }
-        }
-
-        if (!isLocalMax) {
-          continue;
-        }
-
-        let ringSum = 0;
-        let ringCount = 0;
-        for (let dy = -ringOuter; dy <= ringOuter; dy++) {
-          const yy = y + dy;
-          for (let dx = -ringOuter; dx <= ringOuter; dx++) {
-            const distanceSq = dx * dx + dy * dy;
-            if (distanceSq <= ringInnerSq || distanceSq > ringOuterSq) {
-              continue;
-            }
-            const xx = x + dx;
-            const sampleIndex = yy * width + xx;
-            ringSum += luminances[sampleIndex];
-            ringCount++;
-          }
-        }
-
-        if (ringCount === 0) {
-          continue;
-        }
-
-        const ringAverage = ringSum / ringCount;
-        if (centerLum - ringAverage < contrastThreshold) {
-          continue;
-        }
-
-        if (minDistanceSq > 0) {
-          let shouldSkip = false;
-          for (let i = 0; i < stars.length; i++) {
-            const candidate = stars[i];
-            const dx = candidate.x - x;
-            const dy = candidate.y - y;
-            if (dx * dx + dy * dy < minDistanceSq) {
-              if (centerLum > candidate.brightness) {
-                stars[i] = { x, y, brightness: centerLum };
-              }
-              shouldSkip = true;
-              break;
-            }
-          }
-          if (shouldSkip) {
-            continue;
-          }
-        }
-
-        stars.push({ x, y, brightness: centerLum });
-      }
-    }
-
-    return stars;
-  }
-
-  function drawDetections(stars) {
-    overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
-    overlayCtx.lineWidth = 1;
-    overlayCtx.strokeStyle = "rgba(255, 215, 0, 0.85)";
-    overlayCtx.fillStyle = "rgba(255, 215, 0, 0.55)";
-    for (const star of stars) {
-      const radius = Math.max(2, Math.min(5, star.brightness / 80));
-      overlayCtx.beginPath();
-      overlayCtx.arc(star.x, star.y, radius, 0, 2 * Math.PI);
-      overlayCtx.stroke();
-      overlayCtx.beginPath();
-      overlayCtx.arc(star.x, star.y, Math.max(1, radius * 0.5), 0, 2 * Math.PI);
-      overlayCtx.fill();
-    }
-  }
-
-  window.addEventListener("resize", resizeCanvas);
-  window.addEventListener("load", () => {
-    resizeCanvas();
-    requestAnimationFrame(drawStars);
-  });
-</script>
+  <main>
+    <h1>songs</h1>
+    <ul>
+      <li><a href="amazing-grace.html">amazing grace</a></li>
+      <li><a href="bedrock.html">bedrock</a></li>
+      <li><a href="flowstone.html">flowstone</a></li>
+      <li><a href="handelsonatagminor.html">handel sonata g minor</a></li>
+      <li><a href="if-i-die-tomorrow.html">if i die tomorrow</a></li>
+      <li><a href="let-it-be-me.html">let it be me</a></li>
+      <li><a href="make-you-feel-my-love.html">make you feel my love</a></li>
+      <li><a href="rest.html">rest</a></li>
+      <li><a href="salmagundi.html">salmagundi</a></li>
+      <li><a href="john.html">john</a></li>
+      <li><a href="spiegel-im-spiegel.html">spiegel im spiegel</a></li>
+      <li><a href="spiegel-im-spiegel-piano.html">spiegel im spiegel (piano accompaniment)</a></li>
+    </ul>
+  </main>
 </body>
 </html>
