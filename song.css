@@ -59,7 +59,9 @@ button {
   font-size: 3rem;
 }
 
+.title .glyph.feather-glyph,
 .feather {
+  display: inline-block;
   width: 2em;
   height: 2em;
 }
