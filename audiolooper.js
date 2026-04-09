@@ -21,7 +21,6 @@
 
   let loopActive = false;
   let playActive = false;
-  let loopHandler = null;
   let currentLoopIndex = null;
 
   function parseTime(t) {
@@ -38,9 +37,19 @@
 
   let loops = [];
 
+  // Single persistent timeupdate handler — checks current loop state
+  // instead of adding/removing listeners on every toggle.
+  audio.addEventListener('timeupdate', () => {
+    if (!loopActive || currentLoopIndex === null) return;
+    const loop = loops[currentLoopIndex];
+    const end = parseTime(loop.end.value);
+    if (audio.currentTime >= end) {
+      audio.currentTime = parseTime(loop.start.value);
+    }
+  });
+
   function stopLoop() {
     audio.pause();
-    if (loopHandler) audio.removeEventListener('timeupdate', loopHandler);
     if (currentLoopIndex !== null) {
       loops[currentLoopIndex].button.textContent = 'loop section';
     }
@@ -55,13 +64,6 @@
     currentLoopIndex = i;
     const start = parseTime(loops[i].start.value);
     audio.currentTime = start;
-    loopHandler = () => {
-      const e = parseTime(loops[i].end.value);
-      if (audio.currentTime >= e) {
-        audio.currentTime = parseTime(loops[i].start.value);
-      }
-    };
-    audio.addEventListener('timeupdate', loopHandler);
     audio.play();
     loops[i].button.textContent = 'stop';
     loopActive = true;
@@ -163,4 +165,3 @@
     speedDisplay.textContent = r.toFixed(2) + 'x';
   });
 })();
-

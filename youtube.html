@@ -208,6 +208,9 @@
       if (currentLoopIndex !== null) {
         loops[currentLoopIndex].button.textContent = 'loop section';
       }
+      if (player && loopActive) {
+        player.pauseVideo();
+      }
       loopActive = false;
       currentLoopIndex = null;
     }

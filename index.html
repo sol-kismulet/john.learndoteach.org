@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>songs</title>
   <style>
     body {
@@ -49,29 +50,57 @@
       color: #d8d8ff;
       border-color: rgba(216, 216, 255, 0.4);
     }
+
+    .section-break {
+      margin-top: 1.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
   </style>
 </head>
 <body>
   <main>
     <h1>songs</h1>
-    <ul>
-      <li><a href="amazing-grace.html">amazing grace</a></li>
-      <li><a href="bedrock.html">bedrock</a></li>
-      <li><a href="flowstone.html">flowstone</a></li>
-      <li><a href="golden.html">golden</a></li>
-      <li><a href="handelsonatagminor.html">handel sonata g minor</a></li>
-      <li><a href="if-i-die-tomorrow.html">if i die tomorrow</a></li>
-      <li><a href="let-it-be-me.html">let it be me</a></li>
-      <li><a href="mahler-no2.html">mahler symphony no. 2</a></li>
-      <li><a href="mahler-no2-video.html">mahler symphony no. 2 (video)</a></li>
-      <li><a href="make-you-feel-my-love.html">make you feel my love</a></li>
-      <li><a href="rest.html">rest</a></li>
-      <li><a href="tera-mastaana.html">tera mastaana</a></li>
-      <li><a href="salmagundi.html">salmagundi</a></li>
-      <li><a href="john.html">john</a></li>
-      <li><a href="spiegel-im-spiegel.html">spiegel im spiegel</a></li>
-      <li><a href="spiegel-im-spiegel-piano.html">spiegel im spiegel (piano accompaniment)</a></li>
-    </ul>
+    <ul id="song-list"></ul>
   </main>
+
+  <script>
+    fetch('songs.json')
+      .then(r => r.json())
+      .then(songs => {
+        const list = document.getElementById('song-list');
+
+        // Song entries from songs.json, sorted alphabetically by title
+        const entries = Object.entries(songs).sort((a, b) =>
+          a[1].title.localeCompare(b[1].title)
+        );
+
+        entries.forEach(([slug, song]) => {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = 'song.html?s=' + encodeURIComponent(slug);
+          a.textContent = song.title;
+          li.appendChild(a);
+          list.appendChild(li);
+        });
+
+        // Special pages
+        const extras = [
+          { href: 'mahler-no2-video.html', title: 'mahler symphony no. 2 (video)' },
+          { href: 'youtube.html', title: 'youtube looper' },
+          { href: 'john.html', title: 'john' },
+        ];
+
+        extras.forEach((item, i) => {
+          const li = document.createElement('li');
+          if (i === 0) li.className = 'section-break';
+          const a = document.createElement('a');
+          a.href = item.href;
+          a.textContent = item.title;
+          li.appendChild(a);
+          list.appendChild(li);
+        });
+      });
+  </script>
 </body>
 </html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>loading…</title>
+  <link rel="stylesheet" href="song.css">
+</head>
+<body>
+  <div id="title" class="title">
+    <span id="song-title">loading…</span>
+    <img src="feather.svg" alt="feather" class="feather">
+  </div>
+
+  <div class="controls">
+    <div id="loops"></div>
+    <div>
+      <button id="add-loop">+</button>
+    </div>
+    <div>
+      <label style="margin-right:0.5rem;">speed <span id="speed-display">1x</span></label>
+      <input id="speed" type="range" min="0.5" max="1.5" step="0.05" value="1">
+    </div>
+    <div>
+      <button id="play-btn">play piece</button>
+    </div>
+  </div>
+
+  <audio id="audio" preload="auto"></audio>
+
+  <div id="footer-area"></div>
+
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const slug = params.get('s');
+
+      if (!slug) {
+        document.getElementById('song-title').textContent = 'no song specified';
+        return;
+      }
+
+      fetch('songs.json')
+        .then(r => r.json())
+        .then(songs => {
+          const song = songs[slug];
+          if (!song) {
+            document.getElementById('song-title').textContent = 'song not found';
+            return;
+          }
+
+          // Title
+          document.title = song.title;
+          document.getElementById('song-title').textContent = song.title;
+
+          // Audio
+          const audio = document.getElementById('audio');
+          audio.src = song.audio;
+
+          // Speed slider min
+          if (song.speedMin) {
+            document.getElementById('speed').min = song.speedMin;
+          }
+
+          // Build loops
+          const loopsContainer = document.getElementById('loops');
+          song.loops.forEach(([start, end]) => {
+            const div = document.createElement('div');
+            div.className = 'loop';
+
+            const startLabel = document.createElement('label');
+            startLabel.textContent = 'start ';
+            const startInput = document.createElement('input');
+            startInput.type = 'text';
+            startInput.size = 5;
+            startInput.className = 'start';
+            startInput.value = start;
+            startLabel.appendChild(startInput);
+
+            const endLabel = document.createElement('label');
+            endLabel.textContent = 'end ';
+            const endInput = document.createElement('input');
+            endInput.type = 'text';
+            endInput.size = 5;
+            endInput.className = 'end';
+            endInput.value = end;
+            endLabel.appendChild(endInput);
+
+            div.appendChild(startLabel);
+            div.appendChild(endLabel);
+            loopsContainer.appendChild(div);
+          });
+
+          // Footer
+          if (song.footer) {
+            const p = document.createElement('p');
+            p.className = 'footer-note';
+            p.innerHTML = song.footer;
+            document.getElementById('footer-area').appendChild(p);
+          }
+
+          // Lyrics
+          if (song.lyrics) {
+            const pre = document.createElement('pre');
+            pre.className = 'lyrics';
+            pre.textContent = song.lyrics;
+            document.getElementById('footer-area').appendChild(pre);
+          }
+
+          // Load the looper after DOM is populated
+          const script = document.createElement('script');
+          script.src = 'audiolooper.js';
+          document.body.appendChild(script);
+        })
+        .catch(err => {
+          console.error('Failed to load songs.json:', err);
+          document.getElementById('song-title').textContent = 'failed to load';
+        });
+    })();
+  </script>
+</body>
+</html>
