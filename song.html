@@ -4,8 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>loading…</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="song.css">
   <style>
+    #video-wrapper {
+      width: min(560px, 90vw);
+      aspect-ratio: 16 / 9;
+      background: #111;
+    }
+    #video-wrapper iframe {
+      width: 100%;
+      height: 100%;
+    }
     .back {
       position: fixed;
       top: 1rem;
@@ -17,13 +29,37 @@
     .back:hover {
       color: #d8d8ff;
     }
+    .loop-label {
+      width: 100%;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.45);
+      letter-spacing: 0.08em;
+      font-style: italic;
+      margin: 0.6rem 0 0.2rem;
+      text-align: left;
+    }
+    #audio-wrapper {
+      display: none;
+    }
+    #audio-wrapper.active {
+      display: block;
+    }
   </style>
 </head>
 <body>
   <a class="back" href="index.html">← back</a>
-  <div id="title" class="title">
+
+  <div class="title">
     <span id="song-title">loading…</span>
-    <img src="feather.svg" alt="feather" class="feather">
+    <img src="feather.svg" alt="" class="feather">
+  </div>
+
+  <div id="video-wrapper">
+    <div id="player"></div>
+  </div>
+
+  <div id="audio-wrapper">
+    <audio id="audio" preload="auto"></audio>
   </div>
 
   <div class="controls">
@@ -32,78 +68,296 @@
       <button id="add-loop">+</button>
     </div>
     <div>
-      <label style="margin-right:0.5rem;">speed <span id="speed-display">1x</span></label>
-      <input id="speed" type="range" min="0.5" max="1.5" step="0.05" value="1">
+      <label class="speed-label">speed <span id="speed-display">1.00x</span></label>
+      <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1">
     </div>
     <div>
       <button id="play-btn">play piece</button>
     </div>
   </div>
 
-  <audio id="audio" preload="auto"></audio>
-
   <div id="footer-area"></div>
 
+  <script src="https://www.youtube.com/iframe_api"></script>
   <script>
-    (function () {
-      const params = new URLSearchParams(window.location.search);
-      const slug = params.get('s');
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('s');
 
-      if (!slug) {
-        document.getElementById('song-title').textContent = 'no song specified';
-        return;
+    if (!slug) {
+      document.getElementById('song-title').textContent = 'no song specified';
+    } else {
+      init(slug);
+    }
+
+    function init(slug) {
+      let player;
+      let playerReady = false;
+      let loopActive = false;
+      let playActive = false;
+      let currentLoopIndex = null;
+      let loops = [];
+      let isVideoMode = false;
+      let isAudioMode = false;
+
+      const loopsContainer = document.getElementById('loops');
+      const addLoopBtn = document.getElementById('add-loop');
+      const playBtn = document.getElementById('play-btn');
+      const speedInput = document.getElementById('speed');
+      const speedDisplay = document.getElementById('speed-display');
+      const audioElement = document.getElementById('audio');
+      const videoWrapper = document.getElementById('video-wrapper');
+      const audioWrapper = document.getElementById('audio-wrapper');
+
+      function parseTime(t) {
+        const parts = t.split(':');
+        if (parts.length === 1) return parseFloat(parts[0]) || 0;
+        if (parts.length === 3) return parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseFloat(parts[2]);
+        return parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
       }
 
+      function formatTime(sec) {
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+      }
+
+      function createLoopElement(startVal, endVal, label) {
+        if (label) {
+          const labelDiv = document.createElement('div');
+          labelDiv.className = 'loop-label';
+          labelDiv.textContent = label;
+          loopsContainer.appendChild(labelDiv);
+        }
+
+        const div = document.createElement('div');
+        div.className = 'loop';
+
+        const startLabel = document.createElement('label');
+        startLabel.textContent = 'start ';
+        const startInput = document.createElement('input');
+        startInput.type = 'text';
+        startInput.className = 'start';
+        startInput.value = startVal;
+        startLabel.appendChild(startInput);
+
+        const endLabel = document.createElement('label');
+        endLabel.textContent = 'end ';
+        const endInput = document.createElement('input');
+        endInput.type = 'text';
+        endInput.className = 'end';
+        endInput.value = endVal;
+        endLabel.appendChild(endInput);
+
+        const btn = document.createElement('button');
+        btn.textContent = 'loop section';
+        btn.className = 'loop-btn';
+        const index = loops.length;
+        btn.addEventListener('click', () => handleLoopButton(index));
+
+        div.appendChild(startLabel);
+        div.appendChild(endLabel);
+        div.appendChild(btn);
+        loopsContainer.appendChild(div);
+
+        loops.push({ start: startInput, end: endInput, button: btn });
+      }
+
+      function stopLoop() {
+        if (currentLoopIndex !== null) {
+          loops[currentLoopIndex].button.textContent = 'loop section';
+        }
+        if (isVideoMode && player && loopActive) {
+          player.pauseVideo();
+        } else if (isAudioMode && loopActive) {
+          audioElement.pause();
+        }
+        loopActive = false;
+        currentLoopIndex = null;
+      }
+
+      function startLoop(i) {
+        if (isVideoMode && !playerReady) return;
+        if (isAudioMode && !audioElement.src) return;
+        playActive = false;
+        playBtn.textContent = 'play piece';
+        const start = parseTime(loops[i].start.value);
+        if (isVideoMode) {
+          player.seekTo(start, true);
+          player.playVideo();
+        } else {
+          audioElement.currentTime = start;
+          audioElement.play();
+        }
+        loops[i].button.textContent = 'stop';
+        currentLoopIndex = i;
+        loopActive = true;
+      }
+
+      function checkLoop() {
+        if (!loopActive || currentLoopIndex === null) return;
+        try {
+          const start = parseTime(loops[currentLoopIndex].start.value);
+          const end = parseTime(loops[currentLoopIndex].end.value);
+          if (end <= start) return;
+          let currentTime;
+          if (isVideoMode) {
+            currentTime = player.getCurrentTime();
+            if (currentTime >= end) {
+              player.seekTo(start, true);
+            }
+          } else if (isAudioMode) {
+            currentTime = audioElement.currentTime;
+            if (currentTime >= end) {
+              audioElement.currentTime = start;
+            }
+          }
+        } catch (e) {}
+      }
+
+      function handleLoopButton(i) {
+        if (loopActive && currentLoopIndex === i) {
+          stopLoop();
+        } else {
+          stopLoop();
+          startLoop(i);
+        }
+      }
+
+      addLoopBtn.addEventListener('click', () => {
+        if (loops.length === 0) return;
+        const last = loops[loops.length - 1];
+        const startVal = last.end.value;
+        const startSec = parseTime(startVal);
+        createLoopElement(startVal, formatTime(startSec + 10));
+      });
+
+      playBtn.addEventListener('click', () => {
+        if (isVideoMode && !playerReady) return;
+        if (isAudioMode && !audioElement.src) return;
+        if (!playActive) {
+          stopLoop();
+          if (isVideoMode) {
+            player.seekTo(0, true);
+            player.playVideo();
+          } else {
+            audioElement.currentTime = 0;
+            audioElement.play();
+          }
+          playBtn.textContent = 'stop';
+          playActive = true;
+        } else {
+          if (isVideoMode) {
+            player.pauseVideo();
+          } else {
+            audioElement.pause();
+          }
+          playBtn.textContent = 'play piece';
+          playActive = false;
+        }
+      });
+
+      speedInput.addEventListener('input', () => {
+        const r = parseFloat(speedInput.value);
+        if (isVideoMode && playerReady) {
+          player.setPlaybackRate(r);
+        } else if (isAudioMode && audioElement.src) {
+          audioElement.playbackRate = r;
+        }
+        speedDisplay.textContent = r.toFixed(2) + 'x';
+      });
+
+      // Load song data and initialize
       fetch('songs.json')
-        .then(r => r.json())
-        .then(songs => {
-          const song = songs[slug];
+        .then(r => {
+          if (!r.ok) throw new Error(r.status);
+          return r.json();
+        })
+        .then(data => {
+          const song = (data.songs || {})[slug];
           if (!song) {
             document.getElementById('song-title').textContent = 'song not found';
             return;
           }
 
-          // Title
           document.title = song.title;
           document.getElementById('song-title').textContent = song.title;
 
-          // Audio
-          const audio = document.getElementById('audio');
-          audio.src = song.audio;
+          // Determine mode
+          if (song.videoId) {
+            isVideoMode = true;
+            audioWrapper.classList.remove('active');
+            videoWrapper.style.display = 'block';
+          } else if (song.audio) {
+            isAudioMode = true;
+            videoWrapper.style.display = 'none';
+            audioWrapper.classList.add('active');
+            audioElement.src = song.audio;
+            audioElement.preservesPitch = true;
+            audioElement.mozPreservesPitch = true;
+            audioElement.webkitPreservesPitch = true;
+          }
 
           // Speed slider min
           if (song.speedMin) {
-            document.getElementById('speed').min = song.speedMin;
+            speedInput.min = song.speedMin;
           }
 
-          // Build loops
-          const loopsContainer = document.getElementById('loops');
-          song.loops.forEach(([start, end]) => {
-            const div = document.createElement('div');
-            div.className = 'loop';
-
-            const startLabel = document.createElement('label');
-            startLabel.textContent = 'start ';
-            const startInput = document.createElement('input');
-            startInput.type = 'text';
-            startInput.size = 5;
-            startInput.className = 'start';
-            startInput.value = start;
-            startLabel.appendChild(startInput);
-
-            const endLabel = document.createElement('label');
-            endLabel.textContent = 'end ';
-            const endInput = document.createElement('input');
-            endInput.type = 'text';
-            endInput.size = 5;
-            endInput.className = 'end';
-            endInput.value = end;
-            endLabel.appendChild(endInput);
-
-            div.appendChild(startLabel);
-            div.appendChild(endLabel);
-            loopsContainer.appendChild(div);
+          // Build loop elements from JSON
+          (song.loops || []).forEach((loop) => {
+            const start = Array.isArray(loop) ? loop[0] : loop.start;
+            const end = Array.isArray(loop) ? loop[1] : loop.end;
+            const label = Array.isArray(loop) ? null : loop.label;
+            createLoopElement(start, end, label);
           });
+
+          // Initialize YouTube player if video mode
+          if (isVideoMode) {
+            window.onYouTubeIframeAPIReady = function () {
+              player = new YT.Player('player', {
+                width: '100%',
+                height: '100%',
+                videoId: song.videoId,
+                playerVars: {
+                  origin: window.location.origin,
+                  rel: 0
+                },
+                events: {
+                  onReady: () => {
+                    playerReady = true;
+                  },
+                  onStateChange: (event) => {
+                    clearInterval(loopTimer);
+                    if (event.data === YT.PlayerState.PLAYING && loopActive) {
+                      loopTimer = setInterval(checkLoop, 200);
+                    } else if (event.data === YT.PlayerState.ENDED) {
+                      playActive = false;
+                      playBtn.textContent = 'play piece';
+                    }
+                  },
+                  onError: () => {
+                    playerReady = false;
+                    stopLoop();
+                    playActive = false;
+                    playBtn.textContent = 'play piece';
+                  }
+                }
+              });
+            };
+
+            let loopTimer = null;
+
+            // If the API already loaded before our callback was set
+            if (window.YT && window.YT.Player) {
+              window.onYouTubeIframeAPIReady();
+            }
+          } else if (isAudioMode) {
+            // Audio mode: use timeupdate event for loop checking
+            audioElement.addEventListener('timeupdate', checkLoop);
+            audioElement.addEventListener('ended', () => {
+              playActive = false;
+              playBtn.textContent = 'play piece';
+            });
+          }
 
           // Footer
           if (song.footer) {
@@ -120,17 +374,12 @@
             pre.textContent = song.lyrics;
             document.getElementById('footer-area').appendChild(pre);
           }
-
-          // Load the looper after DOM is populated
-          const script = document.createElement('script');
-          script.src = 'audiolooper.js';
-          document.body.appendChild(script);
         })
         .catch(err => {
           console.error('Failed to load songs.json:', err);
           document.getElementById('song-title').textContent = 'failed to load';
         });
-    })();
+    }
   </script>
 </body>
 </html>

@@ -27,10 +27,41 @@ body {
   flex-direction: column;
   gap: 1rem;
   align-items: center;
+  width: min(560px, 90vw);
+}
+
+#loops {
+  width: 100%;
+}
+
+.loop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  width: 100%;
+}
+
+.loop input[type="text"] {
+  width: 4.5em;
+  text-align: center;
+}
+
+.loop .loop-btn {
+  font-size: 1rem;
+  padding: 0.4em 0.8em;
+  min-width: 8em;
+  text-align: center;
 }
 
 label {
   font-size: 1.2rem;
+}
+
+.speed-label {
+  margin-right: 0.5rem;
 }
 
 input {
@@ -59,7 +90,6 @@ button {
   font-size: 3rem;
 }
 
-.title .glyph.feather-glyph,
 .feather {
   display: inline-block;
   width: 2em;

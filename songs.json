@@ -1,315 +1,364 @@
 {
-  "amazing-grace": {
-    "title": "amazing grace",
-    "audio": "amazing-grace.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:10"
-      ],
-      [
-        "0:10",
-        "0:22"
-      ],
-      [
-        "0:22",
-        "0:28"
-      ],
-      [
-        "0:28",
-        "0:39"
+  "concerts": {},
+  "songs": {
+    "amazing-grace": {
+      "title": "amazing grace",
+      "audio": "amazing-grace.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:10"
+        ],
+        [
+          "0:10",
+          "0:22"
+        ],
+        [
+          "0:22",
+          "0:28"
+        ],
+        [
+          "0:28",
+          "0:39"
+        ]
       ]
-    ]
-  },
-  "bedrock": {
-    "title": "bedrock",
-    "audio": "bedrock.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:10"
+    },
+    "bedrock": {
+      "title": "bedrock",
+      "audio": "bedrock.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:10"
+        ],
+        [
+          "0:10",
+          "0:22"
+        ],
+        [
+          "0:22",
+          "0:28"
+        ],
+        [
+          "0:28",
+          "0:39"
+        ]
       ],
-      [
-        "0:10",
-        "0:22"
+      "footer": "For more of <em>The Naked Cello</em>'s melodies, wander over to <a href=\"https://helenmountfort.bandcamp.com/album/the-naked-cello\">Helen Mountfort's Bandcamp</a>."
+    },
+    "flowstone": {
+      "title": "flowstone",
+      "audio": "flowstone.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:10"
+        ],
+        [
+          "0:10",
+          "0:22"
+        ],
+        [
+          "0:22",
+          "0:28"
+        ],
+        [
+          "0:28",
+          "0:39"
+        ]
       ],
-      [
-        "0:22",
-        "0:28"
+      "footer": "For more of <em>The Naked Cello</em>'s melodies, wander over to <a href=\"https://helenmountfort.bandcamp.com/album/the-naked-cello\">Helen Mountfort's Bandcamp</a>."
+    },
+    "golden": {
+      "title": "golden",
+      "audio": "golden.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:10"
+        ],
+        [
+          "0:10",
+          "0:22"
+        ],
+        [
+          "0:22",
+          "0:28"
+        ],
+        [
+          "0:28",
+          "0:39"
+        ]
       ],
-      [
-        "0:28",
-        "0:39"
+      "speedMin": 0.25
+    },
+    "handelsonatagminor": {
+      "title": "handel sonata g minor",
+      "audio": "handelsonatagminor.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:10"
+        ],
+        [
+          "0:10",
+          "0:22"
+        ],
+        [
+          "0:22",
+          "0:28"
+        ],
+        [
+          "0:28",
+          "0:39"
+        ]
       ]
-    ],
-    "footer": "For more of <em>The Naked Cello</em>'s melodies, wander over to <a href=\"https://helenmountfort.bandcamp.com/album/the-naked-cello\">Helen Mountfort's Bandcamp</a>."
-  },
-  "flowstone": {
-    "title": "flowstone",
-    "audio": "flowstone.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:10"
-      ],
-      [
-        "0:10",
-        "0:22"
-      ],
-      [
-        "0:22",
-        "0:28"
-      ],
-      [
-        "0:28",
-        "0:39"
+    },
+    "if-i-die-tomorrow": {
+      "title": "if i die tomorrow",
+      "audio": "if-i-die-tomorrow.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:10"
+        ],
+        [
+          "0:10",
+          "0:22"
+        ],
+        [
+          "0:22",
+          "0:28"
+        ],
+        [
+          "0:28",
+          "0:39"
+        ]
       ]
-    ],
-    "footer": "For more of <em>The Naked Cello</em>'s melodies, wander over to <a href=\"https://helenmountfort.bandcamp.com/album/the-naked-cello\">Helen Mountfort's Bandcamp</a>."
-  },
-  "golden": {
-    "title": "golden",
-    "audio": "golden.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:10"
-      ],
-      [
-        "0:10",
-        "0:22"
-      ],
-      [
-        "0:22",
-        "0:28"
-      ],
-      [
-        "0:28",
-        "0:39"
+    },
+    "let-it-be-me": {
+      "title": "let it be me",
+      "audio": "let-it-be-me.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:10"
+        ],
+        [
+          "0:10",
+          "0:22"
+        ],
+        [
+          "0:22",
+          "0:28"
+        ],
+        [
+          "0:28",
+          "0:39"
+        ]
       ]
-    ],
-    "speedMin": 0.25
-  },
-  "handelsonatagminor": {
-    "title": "handel sonata g minor",
-    "audio": "handelsonatagminor.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:10"
-      ],
-      [
-        "0:10",
-        "0:22"
-      ],
-      [
-        "0:22",
-        "0:28"
-      ],
-      [
-        "0:28",
-        "0:39"
+    },
+    "mahler-no2": {
+      "title": "mahler symphony no. 2",
+      "audio": "mahler-no2.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:45"
+        ],
+        [
+          "0:45",
+          "1:30"
+        ],
+        [
+          "1:30",
+          "2:15"
+        ],
+        [
+          "2:15",
+          "3:00"
+        ]
       ]
-    ]
-  },
-  "if-i-die-tomorrow": {
-    "title": "if i die tomorrow",
-    "audio": "if-i-die-tomorrow.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:10"
-      ],
-      [
-        "0:10",
-        "0:22"
-      ],
-      [
-        "0:22",
-        "0:28"
-      ],
-      [
-        "0:28",
-        "0:39"
+    },
+    "mahler-no2-video": {
+      "title": "mahler symphony no. 2 (video)",
+      "videoId": "Cwe8Irtw2sc",
+      "loops": [
+        {
+          "start": "13:56",
+          "end": "14:10",
+          "label": "measures 1-5"
+        },
+        {
+          "start": "14:10",
+          "end": "14:25",
+          "label": "pickup to measure 6 – first half of measure 10"
+        },
+        {
+          "start": "14:25",
+          "end": "14:36",
+          "label": "second half of measure 10 – first half of measure 14"
+        },
+        {
+          "start": "14:35",
+          "end": "15:08",
+          "label": "second half of measure 14 – first half of measure 25"
+        },
+        {
+          "start": "15:08",
+          "end": "15:30",
+          "label": "second half of measure 25 – measure 32"
+        },
+        {
+          "start": "15:30",
+          "end": "15:40",
+          "label": "measures 33–35"
+        },
+        {
+          "start": "15:40",
+          "end": "15:50",
+          "label": "measures 36–38"
+        },
+        {
+          "start": "15:48",
+          "end": "16:00",
+          "label": "pickup to measure 38 – measure 42"
+        }
       ]
-    ]
-  },
-  "let-it-be-me": {
-    "title": "let it be me",
-    "audio": "let-it-be-me.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:10"
-      ],
-      [
-        "0:10",
-        "0:22"
-      ],
-      [
-        "0:22",
-        "0:28"
-      ],
-      [
-        "0:28",
-        "0:39"
+    },
+    "make-you-feel-my-love": {
+      "title": "make you feel my love",
+      "audio": "make-you-feel-my-love.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:10"
+        ],
+        [
+          "0:10",
+          "0:22"
+        ],
+        [
+          "0:22",
+          "0:28"
+        ],
+        [
+          "0:28",
+          "0:39"
+        ]
       ]
-    ]
-  },
-  "mahler-no2": {
-    "title": "mahler symphony no. 2",
-    "audio": "mahler-no2.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:45"
+    },
+    "rest": {
+      "title": "rest",
+      "audio": "rest.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:10"
+        ],
+        [
+          "0:10",
+          "0:22"
+        ],
+        [
+          "0:22",
+          "0:28"
+        ],
+        [
+          "0:28",
+          "0:39"
+        ]
       ],
-      [
-        "0:45",
-        "1:30"
+      "lyrics": "[Verse 1]\nClose your eyes\nLet them rest\nI ain't in no hurry, no hurry at all\nRest your head upon my shoulder\nI swear I would carry, carry you on\n\n[Bridge]\nI won't let you go, go on hungry\nI won't let you cry, without a hand to dry\n\n[Verse 2]\nRest your hands\nLeave them tender\nThey weren't made for working, working at all\n\n[Bridge]\nI won't let you go, go on hungry\nI won't let you cry, without a hand to dry\n\n[Verse 3]\nRest your soul, live in peace\nI won't let you worry, worry at all\n\nI won't let you worry, worry at all\nI won't let you worry, worry at all"
+    },
+    "salmagundi": {
+      "title": "salmagundi",
+      "audio": "salmagundi.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:10"
+        ],
+        [
+          "0:10",
+          "0:22"
+        ],
+        [
+          "0:22",
+          "0:28"
+        ],
+        [
+          "0:28",
+          "0:39"
+        ]
       ],
-      [
-        "1:30",
-        "2:15"
-      ],
-      [
-        "2:15",
-        "3:00"
+      "footer": "For more of <em>The Naked Cello</em>'s melodies, wander over to <a href=\"https://helenmountfort.bandcamp.com/album/the-naked-cello\">Helen Mountfort's Bandcamp</a>."
+    },
+    "spiegel-im-spiegel": {
+      "title": "spiegel im spiegel",
+      "audio": "spiegel-im-spiegel.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:10"
+        ],
+        [
+          "0:10",
+          "0:22"
+        ],
+        [
+          "0:22",
+          "0:28"
+        ],
+        [
+          "0:28",
+          "0:39"
+        ]
       ]
-    ]
-  },
-  "make-you-feel-my-love": {
-    "title": "make you feel my love",
-    "audio": "make-you-feel-my-love.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:10"
-      ],
-      [
-        "0:10",
-        "0:22"
-      ],
-      [
-        "0:22",
-        "0:28"
-      ],
-      [
-        "0:28",
-        "0:39"
+    },
+    "spiegel-im-spiegel-piano": {
+      "title": "spiegel im spiegel (piano accompaniment)",
+      "audio": "spiegel-im-spiegel-piano.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:10"
+        ],
+        [
+          "0:10",
+          "0:22"
+        ],
+        [
+          "0:22",
+          "0:28"
+        ],
+        [
+          "0:28",
+          "0:39"
+        ]
       ]
-    ]
-  },
-  "rest": {
-    "title": "rest",
-    "audio": "rest.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:10"
-      ],
-      [
-        "0:10",
-        "0:22"
-      ],
-      [
-        "0:22",
-        "0:28"
-      ],
-      [
-        "0:28",
-        "0:39"
+    },
+    "tera-mastaana": {
+      "title": "tera mastaana",
+      "audio": "tera-mastaana--from-madness.mp3",
+      "loops": [
+        [
+          "0:00",
+          "0:18"
+        ],
+        [
+          "0:18",
+          "0:36"
+        ],
+        [
+          "0:36",
+          "0:54"
+        ],
+        [
+          "0:54",
+          "1:12"
+        ]
       ]
-    ],
-    "lyrics": "[Verse 1]\nClose your eyes\nLet them rest\nI ain't in no hurry, no hurry at all\nRest your head upon my shoulder\nI swear I would carry, carry you on\n\n[Bridge]\nI won't let you go, go on hungry\nI won't let you cry, without a hand to dry\n\n[Verse 2]\nRest your hands\nLeave them tender\nThey weren't made for working, working at all\n\n[Bridge]\nI won't let you go, go on hungry\nI won't let you cry, without a hand to dry\n\n[Verse 3]\nRest your soul, live in peace\nI won't let you worry, worry at all\n\nI won't let you worry, worry at all\nI won't let you worry, worry at all"
-  },
-  "salmagundi": {
-    "title": "salmagundi",
-    "audio": "salmagundi.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:10"
-      ],
-      [
-        "0:10",
-        "0:22"
-      ],
-      [
-        "0:22",
-        "0:28"
-      ],
-      [
-        "0:28",
-        "0:39"
-      ]
-    ],
-    "footer": "For more of <em>The Naked Cello</em>'s melodies, wander over to <a href=\"https://helenmountfort.bandcamp.com/album/the-naked-cello\">Helen Mountfort's Bandcamp</a>."
-  },
-  "spiegel-im-spiegel-piano": {
-    "title": "spiegel im spiegel (piano accompaniment)",
-    "audio": "spiegel-im-spiegel-piano.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:10"
-      ],
-      [
-        "0:10",
-        "0:22"
-      ],
-      [
-        "0:22",
-        "0:28"
-      ],
-      [
-        "0:28",
-        "0:39"
-      ]
-    ]
-  },
-  "spiegel-im-spiegel": {
-    "title": "spiegel im spiegel",
-    "audio": "spiegel-im-spiegel.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:10"
-      ],
-      [
-        "0:10",
-        "0:22"
-      ],
-      [
-        "0:22",
-        "0:28"
-      ],
-      [
-        "0:28",
-        "0:39"
-      ]
-    ]
-  },
-  "tera-mastaana": {
-    "title": "tera mastaana",
-    "audio": "tera-mastaana--from-madness.mp3",
-    "loops": [
-      [
-        "0:00",
-        "0:18"
-      ],
-      [
-        "0:18",
-        "0:36"
-      ],
-      [
-        "0:36",
-        "0:54"
-      ],
-      [
-        "0:54",
-        "1:12"
-      ]
-    ]
+    }
   }
 }

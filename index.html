@@ -67,8 +67,9 @@
   <script>
     fetch('songs.json')
       .then(r => r.json())
-      .then(songs => {
+      .then(data => {
         const list = document.getElementById('song-list');
+        const songs = data.songs || {};
 
         // Song entries from songs.json, sorted alphabetically by title
         const entries = Object.entries(songs).sort((a, b) =>
@@ -86,7 +87,6 @@
 
         // Special pages
         const extras = [
-          { href: 'mahler-no2-video.html', title: 'mahler symphony no. 2 (video)' },
           { href: 'youtube.html', title: 'youtube looper' },
           { href: 'john.html', title: 'john' },
         ];
