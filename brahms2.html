@@ -190,20 +190,18 @@
     }
 
     // Seek both video and audio to a video-time position
+    // Audio is paused first, then seeked — it only resumes via onStateChange
     function seekBoth(videoTimeSec) {
-      player.seekTo(videoTimeSec, true);
       if (useLocalAudio) {
+        audioEl.pause();
         audioEl.currentTime = videoTimeSec + getOffset();
       }
+      player.seekTo(videoTimeSec, true);
     }
 
-    // Play both
+    // Play video — audio will start via onStateChange PLAYING event
     function playBoth() {
       player.playVideo();
-      if (useLocalAudio) {
-        audioEl.currentTime = player.getCurrentTime() + getOffset();
-        audioEl.play();
-      }
     }
 
     // Pause both
@@ -296,11 +294,15 @@
         if (end <= start) return;
         const currentTime = player.getCurrentTime();
         if (currentTime >= end) {
+          // Pause audio immediately to prevent blip, then seek both
+          if (useLocalAudio) audioEl.pause();
           seekBoth(start);
+          // Video will trigger onStateChange PLAYING which restarts audio
+          return;
         }
 
         // Periodic re-sync: nudge audio if it drifts more than 0.3s
-        if (useLocalAudio) {
+        if (useLocalAudio && !audioEl.paused) {
           const expectedAudioTime = player.getCurrentTime() + getOffset();
           const drift = Math.abs(audioEl.currentTime - expectedAudioTime);
           if (drift > 0.3) {
