@@ -348,6 +348,7 @@
 
     // ── Loop logic ──
     function stopLoop() {
+      clearInterval(loopTimer);
       if (currentLoopIndex !== null) {
         loops[currentLoopIndex].button.textContent = 'loop section';
       }
@@ -371,24 +372,26 @@
       loopActive = true;
     }
 
-    function checkLoop() {
-      if (!loopActive || currentLoopIndex === null) return;
+    function checkSync() {
       try {
-        const start = parseTime(loops[currentLoopIndex].start.value);
-        const end = parseTime(loops[currentLoopIndex].end.value);
-        if (end <= start) return;
-        const currentTime = player.getCurrentTime();
-        if (currentTime >= end) {
-          // Stop grain immediately to prevent blip, then seek both
-          if (useLocalAudio) grainStop();
-          seekBoth(start);
-          // Video will trigger onStateChange PLAYING which restarts grain
-          return;
+        const videoTime = player.getCurrentTime();
+
+        // Loop boundary check
+        if (loopActive && currentLoopIndex !== null) {
+          const start = parseTime(loops[currentLoopIndex].start.value);
+          const end = parseTime(loops[currentLoopIndex].end.value);
+          if (end > start && videoTime >= end) {
+            // Stop grain immediately to prevent blip, then seek both
+            if (useLocalAudio) grainStop();
+            seekBoth(start);
+            // Video will trigger onStateChange PLAYING which restarts grain
+            return;
+          }
         }
 
         // Periodic re-sync: nudge grain if it drifts more than 0.3s
         if (useLocalAudio && grainIsPlaying) {
-          const expectedAudioTime = player.getCurrentTime() + getOffset();
+          const expectedAudioTime = videoTime + getOffset();
           const drift = Math.abs(getGrainCurrentTime() - expectedAudioTime);
           if (drift > 0.3) {
             grainStop();
@@ -466,9 +469,7 @@
           onStateChange: (event) => {
             clearInterval(loopTimer);
             if (event.data === YT.PlayerState.PLAYING) {
-              if (loopActive) {
-                loopTimer = setInterval(checkLoop, 100);
-              }
+              loopTimer = setInterval(checkSync, 100);
               // Sync grain audio when video starts playing
               if (useLocalAudio && grainReady) {
                 const audioTime = player.getCurrentTime() + getOffset();
