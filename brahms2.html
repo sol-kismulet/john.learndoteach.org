@@ -377,13 +377,13 @@
           const expectedAudioTime = videoTime + getOffset();
           const drift = getGrainCurrentTime() - expectedAudioTime;
           const absDrift = Math.abs(drift);
-          if (absDrift > 0.05) {
-            // Nudge rate by up to 8% to close the gap gradually
-            const correction = Math.min(absDrift * 0.2, 0.08);
+          if (absDrift > 0.02) {
+            // Nudge rate to close the gap — scale correction to drift size
+            const correction = Math.min(absDrift * 0.3, 0.08);
             const nudge = drift > 0 ? -correction : correction;
             grainPlayer.playbackRate = currentPlaybackRate + nudge;
           } else {
-            // Close enough — restore exact rate
+            // Within 20ms — restore exact rate
             grainPlayer.playbackRate = currentPlaybackRate;
           }
         }
