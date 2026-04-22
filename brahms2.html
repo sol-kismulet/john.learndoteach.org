@@ -129,10 +129,12 @@
     ];
 
     // PLL tuning constants
-    const PLL_NUDGE       = 0.001;  // rate micro-adjustment (imperceptible)
+    const PLL_GAIN        = 0.05;   // proportional gain: nudge = drift * PLL_GAIN
+    const PLL_MAX_NUDGE   = 0.01;   // max rate adjustment (still imperceptible)
     const PLL_DEADZONE    = 0.015;  // 15ms — below this, no correction needed
     const PLL_HARD_RESYNC = 0.150;  // 150ms — above this, stop/restart grain
     const DEBOUNCE_MS     = 200;    // wait after PLAYING before syncing
+    const LATENCY_OFFSET  = 0;      // tune by ear: negative = grain starts earlier
 
     // ── State ──
     let ytPlayer;
@@ -156,6 +158,7 @@
     let lastGrainStartWall = 0;   // Tone.now() when grain was last started
     let currentAppliedRate = 1;   // actual rate on the grain player (includes nudges)
     let playingDebounceUntil = 0; // timestamp: ignore sync until this time
+    let lastYtTime = 0;          // for detecting YouTube native loop wrap-around
 
     // ── Elements ──
     const loopsContainer = document.getElementById('loops');
@@ -208,7 +211,7 @@
 
     // ── Hard sync: stop and restart grain at a specific position ──
     function grainHardSync(audioTime) {
-      if (!grainReady || !grainPlayer) return;
+      if (!grainReady || !grainPlayer || !grainPlayer.buffer.loaded) return;
       // Clamp to valid buffer range — seeking past the end causes silence
       const bufDuration = grainPlayer.buffer.duration;
       const t = Math.max(0, Math.min(audioTime, bufDuration - 0.1));
@@ -255,7 +258,7 @@
       if (ytReady) ytPlayer.mute();
       // If video is already playing, start grain now
       if (ytReady && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING && grainReady) {
-        grainHardSync(ytPlayer.getCurrentTime());
+        grainHardSync(ytPlayer.getCurrentTime() + LATENCY_OFFSET);
         startSyncLoop();
       }
       syncStatus.textContent = 'using local audio (tone.js grain)';
@@ -288,6 +291,14 @@
 
           const videoTime = ytPlayer.getCurrentTime();
 
+          // ── YouTube native loop wrap-around detection ──
+          // If ytTime jumps backward by >1s without us seeking, YouTube
+          // looped via its native context menu — force a hard re-sync
+          if (videoTime < lastYtTime - 1.0 && grainIsPlaying) {
+            grainHardSync(videoTime + LATENCY_OFFSET);
+          }
+          lastYtTime = videoTime;
+
           // ── Loop boundary check ──
           if (loopActive && currentLoopIndex !== null) {
             const start = parseTime(loops[currentLoopIndex].start.value);
@@ -306,16 +317,20 @@
           // ── PLL drift correction ──
           if (grainIsPlaying) {
             const grainTime = estimateGrainPosition();
-            const drift = grainTime - videoTime; // positive = grain is ahead
+            const expectedTime = videoTime + LATENCY_OFFSET;
+            const drift = grainTime - expectedTime; // positive = grain is ahead
             const absDrift = Math.abs(drift);
 
             if (absDrift > PLL_HARD_RESYNC) {
               // Emergency: drift too large, hard re-sync
-              grainHardSync(videoTime);
+              grainHardSync(expectedTime);
               syncStatus.textContent = 'hard resync (drift: ' + (drift * 1000).toFixed(0) + 'ms)';
             } else if (absDrift > PLL_DEADZONE) {
-              // PLL nudge: gently adjust rate to close the gap
-              const nudge = drift > 0 ? -PLL_NUDGE : PLL_NUDGE;
+              // Proportional nudge: scale correction to drift magnitude
+              // At 100ms drift: nudge = 0.005 → corrects at 5ms/sec
+              // At 50ms drift:  nudge = 0.0025 → corrects at 2.5ms/sec
+              // Capped at ±0.01 to stay imperceptible
+              const nudge = Math.max(-PLL_MAX_NUDGE, Math.min(PLL_MAX_NUDGE, -drift * PLL_GAIN));
               currentAppliedRate = targetRate + nudge;
               grainPlayer.playbackRate = currentAppliedRate;
             } else {
@@ -364,8 +379,7 @@
       ytPlayer.setPlaybackRate(rate);
       if (useLocalAudio && grainIsPlaying) {
         // Hard sync on speed change to avoid accumulated error
-        const videoTime = ytPlayer.getCurrentTime();
-        grainHardSync(videoTime);
+        grainHardSync(ytPlayer.getCurrentTime() + LATENCY_OFFSET);
       }
     }
 
@@ -522,8 +536,7 @@
 
               if (useLocalAudio && grainReady) {
                 // Start grain at YouTube's current position
-                const t = ytPlayer.getCurrentTime();
-                grainHardSync(t);
+                grainHardSync(ytPlayer.getCurrentTime() + LATENCY_OFFSET);
               }
               startSyncLoop();
 
@@ -553,7 +566,7 @@
             // Update slider to match (YouTube may have clamped it)
             speedInput.value = ytRate;
             if (useLocalAudio && grainIsPlaying) {
-              grainHardSync(ytPlayer.getCurrentTime());
+              grainHardSync(ytPlayer.getCurrentTime() + LATENCY_OFFSET);
             }
           }
         }

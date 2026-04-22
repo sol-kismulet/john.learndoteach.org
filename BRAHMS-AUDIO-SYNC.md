@@ -36,14 +36,18 @@ The sync engine was rebuilt after extensive debugging and two external code revi
    - **BUFFERING handling**: grain player stops immediately when YouTube enters BUFFERING state, preventing it from running ahead
    - At loop boundaries, grain is stopped before seeking to prevent blips
 
-### PLL Tuning Constants
+### PLL Tuning Constants (v2.2)
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
-| `PLL_NUDGE` | 0.001 | Rate micro-adjustment per tick (imperceptible) |
+| `PLL_GAIN` | 0.05 | Proportional gain: nudge = drift × gain |
+| `PLL_MAX_NUDGE` | 0.01 | Max rate adjustment cap (imperceptible) |
 | `PLL_DEADZONE` | 15ms | Below this drift, no correction needed |
 | `PLL_HARD_RESYNC` | 150ms | Above this drift, stop/restart grain |
 | `DEBOUNCE_MS` | 200ms | Wait after PLAYING before trusting sync |
+| `LATENCY_OFFSET` | 0 | Compensate for YouTube IPC lag (tune by ear) |
+
+The proportional nudge replaced the fixed ±0.001 from v2.0. At 100ms drift the nudge is 0.005 (corrects at 5ms/sec, converges in ~20s). At 50ms drift, 0.0025 (converges in ~20s). The fixed nudge took 100s to converge from 100ms — too slow.
 
 ### What triggers a hard re-sync (stop + restart grain)
 
@@ -52,6 +56,7 @@ The sync engine was rebuilt after extensive debugging and two external code revi
 - Speed slider change
 - Loop boundary seek
 - Drift exceeding 150ms (emergency)
+- YouTube native loop wrap-around (detected when `ytTime` jumps backward by >1s)
 
 ## Key Files
 
@@ -124,12 +129,21 @@ Validated the architecture. Raised three actionable issues:
 
 Also noted: rAF polling at 60Hz is redundant given YouTube API's ~200ms internal update frequency. True, but the overhead is negligible and it simplifies the code vs. a separate timer.
 
+### Review 4 — v2.1 pressure test
+Confirmed fixes were valid. Raised four new issues:
+1. **Fixed nudge too slow**: ±0.001 corrects at 1ms/sec — 100ms drift takes 100s to converge. **Fixed** in v2.2 — proportional nudge: `clamp(drift × 0.05, ±0.01)`. Now converges in ~20s from 100ms.
+2. **Frame-rate dependency**: Concern that nudge applied per-frame would correct faster on 144Hz than 60Hz. **Not a real issue** — the nudge sets a rate, not an additive per-frame correction. The grain player runs at `targetRate ± nudge` continuously regardless of check frequency.
+3. **Buffer loaded guard**: `buffer.duration` could be 0 if accessed before load completes. **Fixed** in v2.2 — added `!grainPlayer.buffer.loaded` check to `grainHardSync`.
+4. **YouTube IPC latency**: `getCurrentTime()` lags actual playback by ~50-150ms due to iframe IPC. **Fixed** in v2.2 — added `LATENCY_OFFSET` constant (default 0, tune by ear).
+5. **YouTube native loop wrap-around**: No `onStateChange` event when YouTube loops via context menu. **Fixed** in v2.2 — rAF loop detects backward time jump >1s and forces hard re-sync.
+
 ## Remaining Questions
 
 1. Is Tone.js GrainPlayer the right tool for musical time-stretching, or would SoundTouch.js (WSOLA algorithm) be more appropriate for sustained string tones?
-2. Are the PLL tuning constants (15ms deadzone, 150ms hard resync, 0.001 nudge) optimal, or do they need adjustment based on real-world testing?
+2. Are the PLL tuning constants (15ms deadzone, 150ms hard resync, 0.05 gain, 0.01 max nudge) optimal, or do they need adjustment based on real-world testing?
 3. Does the 200ms debounce after PLAYING adequately prevent false drift readings from YouTube's seek settling?
 4. Does the 50ms look-ahead on `grainPlayer.start()` introduce a perceptible delay on hard re-syncs, or is it absorbed by the debounce?
+5. What should `LATENCY_OFFSET` be set to? Needs ear-testing to determine if grain sounds ahead/behind the video.
 
 ## Architecture Details
 
