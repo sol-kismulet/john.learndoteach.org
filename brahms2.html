@@ -39,22 +39,9 @@
       text-align: left;
     }
     .sync-controls {
-      font-size: 0.85rem;
-      color: rgba(255,255,255,0.5);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.4rem;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.3);
       margin-top: 0.5rem;
-      padding-top: 0.5rem;
-      border-top: 1px solid rgba(255,255,255,0.1);
-    }
-    .sync-controls label {
-      font-size: 0.85rem;
-    }
-    .sync-controls input[type="number"] {
-      width: 5em;
-      font-size: 0.85rem;
       text-align: center;
     }
     .audio-source-toggle {
@@ -110,10 +97,6 @@
     </div>
 
     <div class="sync-controls">
-      <div>
-        <label>audio offset (sec): </label>
-        <input type="number" id="audio-offset" value="-3.8" step="0.1">
-      </div>
       <div id="sync-status"></div>
     </div>
   </div>
@@ -123,7 +106,7 @@
   <script>
     // ── Config ──
     const VIDEO_ID = 'QmQLb5SZb4E';
-    const AUDIO_URL = 'brahms-var4.mp3';
+    const AUDIO_URL = 'brahms.mp3';
     const LOOPS = [
       { start: '6:17', end: '8:44', label: 'Var. IV, andante con moto, mm. 146–205' }
     ];
@@ -152,7 +135,6 @@
     const playBtn = document.getElementById('play-btn');
     const speedInput = document.getElementById('speed');
     const speedDisplay = document.getElementById('speed-display');
-    const offsetInput = document.getElementById('audio-offset');
     const syncStatus = document.getElementById('sync-status');
     const btnYoutube = document.getElementById('btn-youtube');
     const btnLocal = document.getElementById('btn-local');
@@ -271,7 +253,7 @@
     }
 
     function getOffset() {
-      return parseFloat(offsetInput.value) || 0;
+      return 0;
     }
 
     // Seek both video and grain to a video-time position
