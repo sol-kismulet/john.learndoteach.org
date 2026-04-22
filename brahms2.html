@@ -372,15 +372,8 @@
           }
         }
 
-        // Periodic re-sync: nudge grain if it drifts more than 0.3s
-        if (useLocalAudio && grainIsPlaying) {
-          const expectedAudioTime = videoTime + getOffset();
-          const drift = Math.abs(getGrainCurrentTime() - expectedAudioTime);
-          if (drift > 0.3) {
-            grainStop();
-            grainPlay(expectedAudioTime);
-          }
-        }
+        // Drift correction disabled for testing — relying on
+        // loop boundary and onStateChange syncs only
       } catch (e) {}
     }
 
