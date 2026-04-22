@@ -150,7 +150,8 @@
           loop: false,
           onload: () => {
             grainReady = true;
-            syncStatus.textContent = 'audio loaded — ready';
+            const sysRate = Tone.context.rawContext.sampleRate;
+            syncStatus.textContent = 'audio loaded — ready (system: ' + sysRate + 'Hz, source: 44100Hz)';
           }
         }).toDestination();
       } catch (e) {
