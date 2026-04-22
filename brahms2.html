@@ -209,14 +209,18 @@
     // ── Hard sync: stop and restart grain at a specific position ──
     function grainHardSync(audioTime) {
       if (!grainReady || !grainPlayer) return;
-      const t = Math.max(0, audioTime);
+      // Clamp to valid buffer range — seeking past the end causes silence
+      const bufDuration = grainPlayer.buffer.duration;
+      const t = Math.max(0, Math.min(audioTime, bufDuration - 0.1));
       grainPlayer.stop();
-      const now = Tone.now();
+      // Small look-ahead so AudioContext clears previous grains before
+      // starting new ones — prevents artifacts at the splice point
+      const startTime = Tone.now() + 0.05;
       lastGrainStartTime = t;
-      lastGrainStartWall = now;
+      lastGrainStartWall = startTime;
       currentAppliedRate = targetRate;
       grainPlayer.playbackRate = targetRate;
-      grainPlayer.start(now, t);
+      grainPlayer.start(startTime, t);
       grainIsPlaying = true;
     }
 

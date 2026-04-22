@@ -100,11 +100,36 @@ This ensures the audio timeline matches the YouTube video exactly (offset = 0).
 **v1**: `setInterval(checkSync, 100)` — 100ms between checks.
 **v2**: `requestAnimationFrame` — ~16ms between checks, smoother correction.
 
+### Silent start on late seek (v2.1 fix)
+Seeking near the end of the recording could pass an offset past the buffer duration to `grainPlayer.start()`, causing silence. Fixed by clamping to `buffer.duration - 0.1`.
+
+### Grain splice artifacts on hard re-sync (v2.1 fix)
+Calling `stop()` and `start()` in the same execution block could leave stale grains in the AudioContext. Fixed by using a 50ms look-ahead (`Tone.now() + 0.05`) on the start time, giving the context a moment to clear.
+
+## External Code Reviews (Gemini)
+
+Three reviews were conducted. Key findings and their disposition:
+
+### Review 1 — Master-slave polling
+Recommended polling YouTube's `getCurrentTime()` as the master clock instead of wall-clock tracking. **Adopted** — this became the v2 architecture.
+
+### Review 2 — PLL pressure test
+Confirmed that "no continuous correction" would fail over 150s loops (~150ms drift from AudioContext clock variance). Recommended PLL micro-nudges of ±0.001. **Adopted** — this is the core of v2's drift correction.
+
+### Review 3 — v2 code review
+Validated the architecture. Raised three actionable issues:
+1. **Buffer boundary check**: offset past buffer duration causes silence. **Fixed** in v2.1 — clamped to `buffer.duration - 0.1`.
+2. **Grain splice artifacts**: `stop()`/`start()` in same block leaves stale grains. **Fixed** in v2.1 — 50ms look-ahead on start time.
+3. **Background tab sync**: rAF throttles when tab is backgrounded. **Accepted risk** — PLL self-corrects on first frame when tab returns (hard resync if drift > 150ms). No Worker needed for a practice tool.
+
+Also noted: rAF polling at 60Hz is redundant given YouTube API's ~200ms internal update frequency. True, but the overhead is negligible and it simplifies the code vs. a separate timer.
+
 ## Remaining Questions
 
 1. Is Tone.js GrainPlayer the right tool for musical time-stretching, or would SoundTouch.js (WSOLA algorithm) be more appropriate for sustained string tones?
 2. Are the PLL tuning constants (15ms deadzone, 150ms hard resync, 0.001 nudge) optimal, or do they need adjustment based on real-world testing?
 3. Does the 200ms debounce after PLAYING adequately prevent false drift readings from YouTube's seek settling?
+4. Does the 50ms look-ahead on `grainPlayer.start()` introduce a perceptible delay on hard re-syncs, or is it absorbed by the debounce?
 
 ## Architecture Details
 
@@ -126,7 +151,7 @@ Loops are defined in the `LOOPS` config array with start/end timestamps and labe
 - **`Tone.start()`** must be called on a user gesture (browser autoplay policy) — handled automatically when user clicks "local file" or any play button
 
 ### Key Functions (v2)
-- `grainHardSync(audioTime)` — stops grain, restarts at specified position with target rate
+- `grainHardSync(audioTime)` — stops grain, restarts at specified position with target rate; clamps to buffer bounds; uses 50ms look-ahead
 - `grainStop()` — saves estimated position, stops playback
 - `estimateGrainPosition()` — drift measurement only, uses `currentAppliedRate`
 - `startSyncLoop()` / `stopSyncLoop()` — manages rAF-based PLL loop
