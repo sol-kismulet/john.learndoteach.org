@@ -112,18 +112,18 @@
     <div class="sync-controls">
       <div>
         <label>audio offset (sec): </label>
-        <input type="number" id="audio-offset" value="0" step="0.1">
+        <input type="number" id="audio-offset" value="-3.8" step="0.1">
       </div>
       <div id="sync-status"></div>
     </div>
   </div>
 
-  <audio id="audio" preload="auto" src="brahms-var4.mp3"></audio>
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
     // ── Config ──
     const VIDEO_ID = 'QmQLb5SZb4E';
+    const AUDIO_URL = 'brahms-var4.mp3';
     const LOOPS = [
       { start: '6:17', end: '8:44', label: 'Var. IV, andante con moto, mm. 146–205' }
     ];
@@ -137,8 +137,16 @@
     let loops = [];
     let useLocalAudio = false;
 
+    // ── Tone.js GrainPlayer ──
+    let grainPlayer = null;
+    let grainReady = false;
+    let toneStarted = false;
+    let currentGrainOffset = 0;   // where in the audio file playback started
+    let grainStartWallTime = 0;   // wall-clock time when playback started
+    let currentPlaybackRate = 1;
+    let grainIsPlaying = false;
+
     // ── Elements ──
-    const audioEl = document.getElementById('audio');
     const loopsContainer = document.getElementById('loops');
     const addLoopBtn = document.getElementById('add-loop');
     const playBtn = document.getElementById('play-btn');
@@ -149,26 +157,101 @@
     const btnYoutube = document.getElementById('btn-youtube');
     const btnLocal = document.getElementById('btn-local');
 
-    audioEl.preservesPitch = true;
-    audioEl.mozPreservesPitch = true;
-    audioEl.webkitPreservesPitch = true;
+    // ── Initialize Tone.js GrainPlayer ──
+    async function initGrainPlayer() {
+      try {
+        syncStatus.textContent = 'loading audio buffer…';
+        grainPlayer = new Tone.GrainPlayer({
+          url: AUDIO_URL,
+          grainSize: 0.2,
+          overlap: 0.1,
+          loop: false,
+          onload: () => {
+            grainReady = true;
+            syncStatus.textContent = 'audio loaded — ready';
+          }
+        }).toDestination();
+      } catch (e) {
+        syncStatus.textContent = 'failed to load audio: ' + e.message;
+      }
+    }
+
+    async function ensureToneStarted() {
+      if (!toneStarted) {
+        await Tone.start();
+        toneStarted = true;
+      }
+    }
+
+    // Get current playback position in the audio file
+    function getGrainCurrentTime() {
+      if (!grainIsPlaying) return currentGrainOffset;
+      const elapsed = (Tone.now() - grainStartWallTime) * currentPlaybackRate;
+      return currentGrainOffset + elapsed;
+    }
+
+    // Start grain playback from a specific position in the audio file
+    function grainPlay(fromTime) {
+      if (!grainReady || !grainPlayer) return;
+      grainPlayer.stop();
+      currentGrainOffset = fromTime;
+      grainStartWallTime = Tone.now();
+      grainPlayer.playbackRate = currentPlaybackRate;
+      grainPlayer.start(Tone.now(), fromTime);
+      grainIsPlaying = true;
+    }
+
+    // Stop grain playback
+    function grainStop() {
+      if (!grainPlayer) return;
+      currentGrainOffset = getGrainCurrentTime();
+      grainPlayer.stop();
+      grainIsPlaying = false;
+    }
+
+    // Seek grain to a position (without starting)
+    function grainSeek(toTime) {
+      const wasPlaying = grainIsPlaying;
+      if (wasPlaying) grainPlayer.stop();
+      currentGrainOffset = toTime;
+      grainIsPlaying = false;
+      // Don't restart — caller or onStateChange will handle that
+    }
+
+    // Set grain playback rate
+    function grainSetRate(rate) {
+      currentPlaybackRate = rate;
+      if (grainIsPlaying && grainPlayer) {
+        // Update offset to current position, then restart at new rate
+        const currentPos = getGrainCurrentTime();
+        grainPlayer.stop();
+        currentGrainOffset = currentPos;
+        grainStartWallTime = Tone.now();
+        grainPlayer.playbackRate = rate;
+        grainPlayer.start(Tone.now(), currentPos);
+      }
+    }
+
+    // Start loading immediately
+    initGrainPlayer();
 
     // ── Audio source toggle ──
-    btnYoutube.addEventListener('click', () => {
+    btnYoutube.addEventListener('click', async () => {
       useLocalAudio = false;
       btnYoutube.classList.add('active');
       btnLocal.classList.remove('active');
       if (playerReady) player.unMute();
-      audioEl.pause();
+      grainStop();
       syncStatus.textContent = 'using youtube audio';
     });
 
-    btnLocal.addEventListener('click', () => {
+    btnLocal.addEventListener('click', async () => {
+      await ensureToneStarted();
       useLocalAudio = true;
       btnLocal.classList.add('active');
       btnYoutube.classList.remove('active');
       if (playerReady) player.mute();
-      syncStatus.textContent = 'using local audio (preservesPitch)';
+      syncStatus.textContent = 'using local audio (tone.js grain)';
     });
 
     // ── Helpers ──
@@ -189,17 +272,16 @@
       return parseFloat(offsetInput.value) || 0;
     }
 
-    // Seek both video and audio to a video-time position
-    // Audio is paused first, then seeked — it only resumes via onStateChange
+    // Seek both video and grain to a video-time position
     function seekBoth(videoTimeSec) {
       if (useLocalAudio) {
-        audioEl.pause();
-        audioEl.currentTime = videoTimeSec + getOffset();
+        grainStop();
+        grainSeek(videoTimeSec + getOffset());
       }
       player.seekTo(videoTimeSec, true);
     }
 
-    // Play video — audio will start via onStateChange PLAYING event
+    // Play video — grain audio will start via onStateChange PLAYING event
     function playBoth() {
       player.playVideo();
     }
@@ -208,7 +290,7 @@
     function pauseBoth() {
       player.pauseVideo();
       if (useLocalAudio) {
-        audioEl.pause();
+        grainStop();
       }
     }
 
@@ -216,7 +298,7 @@
     function setSpeed(rate) {
       player.setPlaybackRate(rate);
       if (useLocalAudio) {
-        audioEl.playbackRate = rate;
+        grainSetRate(rate);
       }
     }
 
@@ -276,6 +358,7 @@
 
     function startLoop(i) {
       if (!playerReady) return;
+      ensureToneStarted();
       playActive = false;
       playBtn.textContent = 'play piece';
       currentLoopIndex = i;
@@ -294,19 +377,20 @@
         if (end <= start) return;
         const currentTime = player.getCurrentTime();
         if (currentTime >= end) {
-          // Pause audio immediately to prevent blip, then seek both
-          if (useLocalAudio) audioEl.pause();
+          // Stop grain immediately to prevent blip, then seek both
+          if (useLocalAudio) grainStop();
           seekBoth(start);
-          // Video will trigger onStateChange PLAYING which restarts audio
+          // Video will trigger onStateChange PLAYING which restarts grain
           return;
         }
 
-        // Periodic re-sync: nudge audio if it drifts more than 0.3s
-        if (useLocalAudio && !audioEl.paused) {
+        // Periodic re-sync: nudge grain if it drifts more than 0.3s
+        if (useLocalAudio && grainIsPlaying) {
           const expectedAudioTime = player.getCurrentTime() + getOffset();
-          const drift = Math.abs(audioEl.currentTime - expectedAudioTime);
+          const drift = Math.abs(getGrainCurrentTime() - expectedAudioTime);
           if (drift > 0.3) {
-            audioEl.currentTime = expectedAudioTime;
+            grainStop();
+            grainPlay(expectedAudioTime);
           }
         }
       } catch (e) {}
@@ -333,6 +417,7 @@
     // ── Play piece ──
     playBtn.addEventListener('click', () => {
       if (!playerReady) return;
+      ensureToneStarted();
       if (!playActive) {
         stopLoop();
         seekBoth(0);
@@ -382,17 +467,17 @@
               if (loopActive) {
                 loopTimer = setInterval(checkLoop, 100);
               }
-              // Sync audio when video starts playing
-              if (useLocalAudio) {
-                audioEl.currentTime = player.getCurrentTime() + getOffset();
-                audioEl.play();
+              // Sync grain audio when video starts playing
+              if (useLocalAudio && grainReady) {
+                const audioTime = player.getCurrentTime() + getOffset();
+                grainPlay(audioTime);
               }
             } else if (event.data === YT.PlayerState.PAUSED) {
-              if (useLocalAudio) audioEl.pause();
+              if (useLocalAudio) grainStop();
             } else if (event.data === YT.PlayerState.ENDED) {
               playActive = false;
               playBtn.textContent = 'play piece';
-              if (useLocalAudio) audioEl.pause();
+              if (useLocalAudio) grainStop();
             }
           }
         }
