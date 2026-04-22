@@ -372,8 +372,21 @@
           }
         }
 
-        // Drift correction disabled for testing — relying on
-        // loop boundary and onStateChange syncs only
+        // Soft drift correction: nudge playback rate instead of stop/restart
+        if (useLocalAudio && grainIsPlaying) {
+          const expectedAudioTime = videoTime + getOffset();
+          const drift = getGrainCurrentTime() - expectedAudioTime;
+          const absDrift = Math.abs(drift);
+          if (absDrift > 0.15) {
+            // Nudge rate by up to 5% to close the gap gradually
+            const correction = Math.min(absDrift * 0.1, 0.05);
+            const nudge = drift > 0 ? -correction : correction;
+            grainPlayer.playbackRate = currentPlaybackRate + nudge;
+          } else {
+            // Close enough — restore exact rate
+            grainPlayer.playbackRate = currentPlaybackRate;
+          }
+        }
       } catch (e) {}
     }
 
