@@ -209,6 +209,14 @@
             const dur = grainPlayer.buffer.duration;
             syncStatus.textContent = 'audio loaded — ready (system: ' + sysRate + 'Hz)';
             dbg('MP3 LOADED: duration=' + dur.toFixed(1) + 's, sysRate=' + sysRate);
+            // If YouTube is already playing with local audio selected,
+            // we missed the PLAYING event — start the grain now
+            if (useLocalAudio && ytReady &&
+                ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+              dbg('MP3 late load: YT already playing, starting grain');
+              grainHardSync(ytPlayer.getCurrentTime() + LATENCY_OFFSET);
+              startSyncLoop();
+            }
           }
         }).toDestination();
       } catch (e) {
