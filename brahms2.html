@@ -193,11 +193,13 @@
     // Start grain playback from a specific position in the audio file
     function grainPlay(fromTime) {
       if (!grainReady || !grainPlayer) return;
+      if (fromTime < 0) fromTime = 0;
       grainPlayer.stop();
+      const now = Tone.now();
       currentGrainOffset = fromTime;
-      grainStartWallTime = Tone.now();
+      grainStartWallTime = now;
       grainPlayer.playbackRate = currentPlaybackRate;
-      grainPlayer.start(Tone.now(), fromTime);
+      grainPlayer.start(now, fromTime);
       grainIsPlaying = true;
     }
 
@@ -211,9 +213,8 @@
 
     // Seek grain to a position (without starting)
     function grainSeek(toTime) {
-      const wasPlaying = grainIsPlaying;
-      if (wasPlaying) grainPlayer.stop();
-      currentGrainOffset = toTime;
+      if (grainIsPlaying) grainPlayer.stop();
+      currentGrainOffset = Math.max(0, toTime);
       grainIsPlaying = false;
       // Don't restart — caller or onStateChange will handle that
     }
@@ -225,10 +226,11 @@
         // Update offset to current position, then restart at new rate
         const currentPos = getGrainCurrentTime();
         grainPlayer.stop();
+        const now = Tone.now();
         currentGrainOffset = currentPos;
-        grainStartWallTime = Tone.now();
+        grainStartWallTime = now;
         grainPlayer.playbackRate = rate;
-        grainPlayer.start(Tone.now(), currentPos);
+        grainPlayer.start(now, Math.max(0, currentPos));
       }
     }
 
@@ -356,9 +358,9 @@
       currentLoopIndex = null;
     }
 
-    function startLoop(i) {
+    async function startLoop(i) {
       if (!playerReady) return;
-      ensureToneStarted();
+      await ensureToneStarted();
       playActive = false;
       playBtn.textContent = 'play piece';
       currentLoopIndex = i;
@@ -415,9 +417,9 @@
     });
 
     // ── Play piece ──
-    playBtn.addEventListener('click', () => {
+    playBtn.addEventListener('click', async () => {
       if (!playerReady) return;
-      ensureToneStarted();
+      await ensureToneStarted();
       if (!playActive) {
         stopLoop();
         seekBoth(0);
