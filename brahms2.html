@@ -147,7 +147,8 @@
     const DEBOUNCE_MS     = 200;    // wait after PLAYING before syncing
     const LATENCY_OFFSET  = 0;      // tune by ear: negative = grain starts earlier
     const RATE_EPSILON    = 0.0005; // skip playbackRate write if change < this
-    const CODE_VERSION    = 'v2.8-2026-04-22';
+    const CODE_VERSION    = 'v2.8a';
+    const VERSION_COLOR   = '#ff6b6b'; // cycle: red, green, blue, yellow
 
     // ── State ──
     let ytPlayer;
@@ -194,7 +195,12 @@
       const lines = debugLog.textContent.split('\n');
       if (lines.length > 30) debugLog.textContent = lines.slice(0, 30).join('\n');
     }
-    dbg('CODE VERSION: ' + CODE_VERSION);
+    // Version banner — colored so you can spot stale cache at a glance
+    const versionLine = document.createElement('div');
+    versionLine.textContent = 'CODE VERSION: ' + CODE_VERSION;
+    versionLine.style.color = VERSION_COLOR;
+    versionLine.style.fontWeight = 'bold';
+    debugLog.appendChild(versionLine);
 
     // ── Initialize Tone.js GrainPlayer ──
     async function initGrainPlayer() {
