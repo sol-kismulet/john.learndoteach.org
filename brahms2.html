@@ -204,16 +204,18 @@
 
     // Set grain playback rate
     function grainSetRate(rate) {
-      currentPlaybackRate = rate;
       if (grainIsPlaying && grainPlayer) {
-        // Update offset to current position, then restart at new rate
+        // Capture position at OLD rate before updating
         const currentPos = getGrainCurrentTime();
         grainPlayer.stop();
         const now = Tone.now();
         currentGrainOffset = currentPos;
         grainStartWallTime = now;
+        currentPlaybackRate = rate;
         grainPlayer.playbackRate = rate;
         grainPlayer.start(now, Math.max(0, currentPos));
+      } else {
+        currentPlaybackRate = rate;
       }
     }
 
