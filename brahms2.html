@@ -160,6 +160,7 @@
     let currentAppliedRate = 1;   // actual rate on the grain player (includes nudges)
     let playingDebounceUntil = 0; // timestamp: ignore sync until this time
     let lastYtTime = 0;          // for detecting YouTube native loop wrap-around
+    let pendingSeekTarget = null; // position we asked YouTube to seek to
 
     // ── Elements ──
     const loopsContainer = document.getElementById('loops');
@@ -306,6 +307,7 @@
             const end = parseTime(loops[currentLoopIndex].end.value);
             if (end > start && videoTime >= end) {
               grainStop();
+              pendingSeekTarget = start;
               ytPlayer.seekTo(start, true);
               // onStateChange PLAYING will restart grain
               return;
@@ -364,6 +366,7 @@
     // ══════════════════════════════════════════════════════════════
 
     function seekBoth(videoTimeSec) {
+      pendingSeekTarget = videoTimeSec;
       if (useLocalAudio) {
         grainStop();
       }
@@ -547,8 +550,17 @@
               }
 
               if (useLocalAudio && grainReady) {
-                // Start grain at YouTube's current position
-                grainHardSync(ytPlayer.getCurrentTime() + LATENCY_OFFSET);
+                // Use our intended seek position if we have one — getCurrentTime()
+                // may still report a stale value during the first few hundred ms
+                // after a seek. The PLL will correct any small error once the
+                // debounce clears and YouTube's clock settles.
+                const syncTime = (pendingSeekTarget !== null)
+                  ? pendingSeekTarget
+                  : ytPlayer.getCurrentTime();
+                pendingSeekTarget = null;
+                grainHardSync(syncTime + LATENCY_OFFSET);
+              } else {
+                pendingSeekTarget = null;
               }
               startSyncLoop();
 
