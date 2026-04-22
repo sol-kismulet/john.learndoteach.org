@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>brahms — var. iv test</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="song.css">
+  <style>
+    #video-wrapper {
+      width: min(560px, 90vw);
+      aspect-ratio: 16 / 9;
+      background: #111;
+    }
+    #video-wrapper iframe {
+      width: 100%;
+      height: 100%;
+    }
+    .back {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      font-size: 1rem;
+      color: #666;
+      text-decoration: none;
+    }
+    .back:hover {
+      color: #d8d8ff;
+    }
+    .loop-label {
+      width: 100%;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.45);
+      letter-spacing: 0.08em;
+      font-style: italic;
+      margin: 0.6rem 0 0.2rem;
+      text-align: left;
+    }
+    .sync-controls {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .sync-controls label {
+      font-size: 0.85rem;
+    }
+    .sync-controls input[type="number"] {
+      width: 5em;
+      font-size: 0.85rem;
+      text-align: center;
+    }
+    .audio-source-toggle {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .audio-source-toggle button {
+      font-size: 0.85rem;
+      padding: 0.3em 0.7em;
+    }
+    .audio-source-toggle .active {
+      color: #fff;
+      border-color: #fff;
+    }
+    #sync-status {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.3);
+    }
+  </style>
+</head>
+<body>
+  <a class="back" href="index.html">← back</a>
+
+  <div class="title">
+    <span>brahms — var. iv test</span>
+    <img src="feather.svg" alt="" class="feather">
+  </div>
+
+  <div id="video-wrapper">
+    <div id="player"></div>
+  </div>
+
+  <div class="controls">
+    <div class="audio-source-toggle">
+      <span>audio:</span>
+      <button id="btn-youtube" class="active">youtube</button>
+      <button id="btn-local">local file</button>
+    </div>
+
+    <div id="loops"></div>
+    <div>
+      <button id="add-loop">+</button>
+    </div>
+    <div>
+      <label class="speed-label">speed <span id="speed-display">1.00x</span></label>
+      <input id="speed" type="range" min="0.25" max="2" step="0.05" value="1">
+    </div>
+    <div>
+      <button id="play-btn">play piece</button>
+    </div>
+
+    <div class="sync-controls">
+      <div>
+        <label>audio offset (sec): </label>
+        <input type="number" id="audio-offset" value="0" step="0.1">
+      </div>
+      <div id="sync-status"></div>
+    </div>
+  </div>
+
+  <audio id="audio" preload="auto" src="brahms-var4.mp3"></audio>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    // ── Config ──
+    const VIDEO_ID = 'QmQLb5SZb4E';
+    const LOOPS = [
+      { start: '6:17', end: '8:44', label: 'Var. IV, andante con moto, mm. 146–205' }
+    ];
+
+    // ── State ──
+    let player;
+    let playerReady = false;
+    let loopActive = false;
+    let playActive = false;
+    let currentLoopIndex = null;
+    let loops = [];
+    let useLocalAudio = false;
+
+    // ── Elements ──
+    const audioEl = document.getElementById('audio');
+    const loopsContainer = document.getElementById('loops');
+    const addLoopBtn = document.getElementById('add-loop');
+    const playBtn = document.getElementById('play-btn');
+    const speedInput = document.getElementById('speed');
+    const speedDisplay = document.getElementById('speed-display');
+    const offsetInput = document.getElementById('audio-offset');
+    const syncStatus = document.getElementById('sync-status');
+    const btnYoutube = document.getElementById('btn-youtube');
+    const btnLocal = document.getElementById('btn-local');
+
+    audioEl.preservesPitch = true;
+    audioEl.mozPreservesPitch = true;
+    audioEl.webkitPreservesPitch = true;
+
+    // ── Audio source toggle ──
+    btnYoutube.addEventListener('click', () => {
+      useLocalAudio = false;
+      btnYoutube.classList.add('active');
+      btnLocal.classList.remove('active');
+      if (playerReady) player.unMute();
+      audioEl.pause();
+      syncStatus.textContent = 'using youtube audio';
+    });
+
+    btnLocal.addEventListener('click', () => {
+      useLocalAudio = true;
+      btnLocal.classList.add('active');
+      btnYoutube.classList.remove('active');
+      if (playerReady) player.mute();
+      syncStatus.textContent = 'using local audio (preservesPitch)';
+    });
+
+    // ── Helpers ──
+    function parseTime(t) {
+      const parts = t.split(':');
+      if (parts.length === 1) return parseFloat(parts[0]) || 0;
+      if (parts.length === 3) return parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseFloat(parts[2]);
+      return parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function getOffset() {
+      return parseFloat(offsetInput.value) || 0;
+    }
+
+    // Seek both video and audio to a video-time position
+    function seekBoth(videoTimeSec) {
+      player.seekTo(videoTimeSec, true);
+      if (useLocalAudio) {
+        audioEl.currentTime = videoTimeSec + getOffset();
+      }
+    }
+
+    // Play both
+    function playBoth() {
+      player.playVideo();
+      if (useLocalAudio) {
+        audioEl.currentTime = player.getCurrentTime() + getOffset();
+        audioEl.play();
+      }
+    }
+
+    // Pause both
+    function pauseBoth() {
+      player.pauseVideo();
+      if (useLocalAudio) {
+        audioEl.pause();
+      }
+    }
+
+    // Set speed on both
+    function setSpeed(rate) {
+      player.setPlaybackRate(rate);
+      if (useLocalAudio) {
+        audioEl.playbackRate = rate;
+      }
+    }
+
+    // ── Loop elements ──
+    function createLoopElement(startVal, endVal, label) {
+      if (label) {
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'loop-label';
+        labelDiv.textContent = label;
+        loopsContainer.appendChild(labelDiv);
+      }
+
+      const div = document.createElement('div');
+      div.className = 'loop';
+
+      const startLabel = document.createElement('label');
+      startLabel.textContent = 'start ';
+      const startInput = document.createElement('input');
+      startInput.type = 'text';
+      startInput.className = 'start';
+      startInput.value = startVal;
+      startLabel.appendChild(startInput);
+
+      const endLabel = document.createElement('label');
+      endLabel.textContent = 'end ';
+      const endInput = document.createElement('input');
+      endInput.type = 'text';
+      endInput.className = 'end';
+      endInput.value = endVal;
+      endLabel.appendChild(endInput);
+
+      const btn = document.createElement('button');
+      btn.textContent = 'loop section';
+      btn.className = 'loop-btn';
+      const index = loops.length;
+      btn.addEventListener('click', () => handleLoopButton(index));
+
+      div.appendChild(startLabel);
+      div.appendChild(endLabel);
+      div.appendChild(btn);
+      loopsContainer.appendChild(div);
+
+      loops.push({ start: startInput, end: endInput, button: btn });
+    }
+
+    // ── Loop logic ──
+    function stopLoop() {
+      if (currentLoopIndex !== null) {
+        loops[currentLoopIndex].button.textContent = 'loop section';
+      }
+      if (playerReady && loopActive) {
+        pauseBoth();
+      }
+      loopActive = false;
+      currentLoopIndex = null;
+    }
+
+    function startLoop(i) {
+      if (!playerReady) return;
+      playActive = false;
+      playBtn.textContent = 'play piece';
+      currentLoopIndex = i;
+      const start = parseTime(loops[i].start.value);
+      seekBoth(start);
+      playBoth();
+      loops[i].button.textContent = 'stop';
+      loopActive = true;
+    }
+
+    function checkLoop() {
+      if (!loopActive || currentLoopIndex === null) return;
+      try {
+        const start = parseTime(loops[currentLoopIndex].start.value);
+        const end = parseTime(loops[currentLoopIndex].end.value);
+        if (end <= start) return;
+        const currentTime = player.getCurrentTime();
+        if (currentTime >= end) {
+          seekBoth(start);
+        }
+
+        // Periodic re-sync: nudge audio if it drifts more than 0.3s
+        if (useLocalAudio) {
+          const expectedAudioTime = player.getCurrentTime() + getOffset();
+          const drift = Math.abs(audioEl.currentTime - expectedAudioTime);
+          if (drift > 0.3) {
+            audioEl.currentTime = expectedAudioTime;
+          }
+        }
+      } catch (e) {}
+    }
+
+    function handleLoopButton(i) {
+      if (loopActive && currentLoopIndex === i) {
+        stopLoop();
+      } else {
+        stopLoop();
+        startLoop(i);
+      }
+    }
+
+    // ── "+" button ──
+    addLoopBtn.addEventListener('click', () => {
+      if (loops.length === 0) return;
+      const last = loops[loops.length - 1];
+      const startVal = last.end.value;
+      const startSec = parseTime(startVal);
+      createLoopElement(startVal, formatTime(startSec + 10));
+    });
+
+    // ── Play piece ──
+    playBtn.addEventListener('click', () => {
+      if (!playerReady) return;
+      if (!playActive) {
+        stopLoop();
+        seekBoth(0);
+        playBoth();
+        playBtn.textContent = 'stop';
+        playActive = true;
+      } else {
+        pauseBoth();
+        playBtn.textContent = 'play piece';
+        playActive = false;
+      }
+    });
+
+    // ── Speed ──
+    speedInput.addEventListener('input', () => {
+      if (!playerReady) return;
+      const r = parseFloat(speedInput.value);
+      setSpeed(r);
+      speedDisplay.textContent = r.toFixed(2) + 'x';
+    });
+
+    // ── Build loops ──
+    LOOPS.forEach(loop => {
+      createLoopElement(loop.start, loop.end, loop.label);
+    });
+
+    // ── YouTube player ──
+    let loopTimer = null;
+
+    window.onYouTubeIframeAPIReady = function () {
+      player = new YT.Player('player', {
+        width: '100%',
+        height: '100%',
+        videoId: VIDEO_ID,
+        playerVars: {
+          origin: window.location.origin,
+          rel: 0
+        },
+        events: {
+          onReady: () => {
+            playerReady = true;
+            if (useLocalAudio) player.mute();
+          },
+          onStateChange: (event) => {
+            clearInterval(loopTimer);
+            if (event.data === YT.PlayerState.PLAYING) {
+              if (loopActive) {
+                loopTimer = setInterval(checkLoop, 100);
+              }
+              // Sync audio when video starts playing
+              if (useLocalAudio) {
+                audioEl.currentTime = player.getCurrentTime() + getOffset();
+                audioEl.play();
+              }
+            } else if (event.data === YT.PlayerState.PAUSED) {
+              if (useLocalAudio) audioEl.pause();
+            } else if (event.data === YT.PlayerState.ENDED) {
+              playActive = false;
+              playBtn.textContent = 'play piece';
+              if (useLocalAudio) audioEl.pause();
+            }
+          }
+        }
+      });
+    };
+
+    if (window.YT && window.YT.Player) {
+      window.onYouTubeIframeAPIReady();
+    }
+  </script>
+</body>
+</html>
