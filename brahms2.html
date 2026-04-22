@@ -63,6 +63,16 @@
       font-size: 0.75rem;
       color: rgba(255,255,255,0.3);
     }
+    #debug-log {
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.25);
+      font-family: monospace;
+      max-height: 10em;
+      overflow-y: auto;
+      text-align: left;
+      white-space: pre;
+      margin-top: 0.5rem;
+    }
   </style>
 </head>
 <body>
@@ -98,6 +108,7 @@
 
     <div class="sync-controls">
       <div id="sync-status"></div>
+      <div id="debug-log"></div>
     </div>
   </div>
 
@@ -171,6 +182,17 @@
     const syncStatus = document.getElementById('sync-status');
     const btnYoutube = document.getElementById('btn-youtube');
     const btnLocal = document.getElementById('btn-local');
+    const debugLog = document.getElementById('debug-log');
+
+    // ── Diagnostic logging (visible on page) ──
+    function dbg(msg) {
+      const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+      const line = time + ' ' + msg;
+      debugLog.textContent = line + '\n' + debugLog.textContent;
+      // Keep last 30 lines
+      const lines = debugLog.textContent.split('\n');
+      if (lines.length > 30) debugLog.textContent = lines.slice(0, 30).join('\n');
+    }
 
     // ── Initialize Tone.js GrainPlayer ──
     async function initGrainPlayer() {
@@ -184,7 +206,9 @@
           onload: () => {
             grainReady = true;
             const sysRate = Tone.context.rawContext.sampleRate;
+            const dur = grainPlayer.buffer.duration;
             syncStatus.textContent = 'audio loaded — ready (system: ' + sysRate + 'Hz)';
+            dbg('MP3 LOADED: duration=' + dur.toFixed(1) + 's, sysRate=' + sysRate);
           }
         }).toDestination();
       } catch (e) {
@@ -213,7 +237,14 @@
 
     // ── Hard sync: stop and restart grain at a specific position ──
     function grainHardSync(audioTime) {
-      if (!grainReady || !grainPlayer || !grainPlayer.buffer.loaded) return;
+      if (!grainReady || !grainPlayer) {
+        dbg('hardSync SKIP: grainReady=' + grainReady + ' grainPlayer=' + !!grainPlayer);
+        return;
+      }
+      if (!grainPlayer.buffer.loaded) {
+        dbg('hardSync SKIP: buffer not loaded');
+        return;
+      }
       // Clamp to valid buffer range — seeking past the end causes silence
       const bufDuration = grainPlayer.buffer.duration;
       const t = Math.max(0, Math.min(audioTime, bufDuration - 0.1));
@@ -227,6 +258,9 @@
       grainPlayer.playbackRate = targetRate;
       grainPlayer.start(startTime, t);
       grainIsPlaying = true;
+      const m = Math.floor(t / 60);
+      const s = (t % 60).toFixed(1);
+      dbg('hardSync → ' + m + ':' + s + ' (requested ' + audioTime.toFixed(1) + ', buf=' + bufDuration.toFixed(1) + 's, rate=' + targetRate + ')');
     }
 
     // ── Stop grain ──
@@ -253,6 +287,7 @@
     });
 
     btnLocal.addEventListener('click', async () => {
+      dbg('CLICK: local file — grainReady=' + grainReady);
       await ensureToneStarted();
       useLocalAudio = true;
       btnLocal.classList.add('active');
@@ -260,6 +295,7 @@
       if (ytReady) ytPlayer.mute();
       // If video is already playing, start grain now
       if (ytReady && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING && grainReady) {
+        dbg('local: YT already playing, starting grain');
         grainHardSync(ytPlayer.getCurrentTime() + LATENCY_OFFSET);
         startSyncLoop();
       }
@@ -381,6 +417,8 @@
     // ══════════════════════════════════════════════════════════════
 
     function seekBoth(videoTimeSec) {
+      const ytState = ytPlayer.getPlayerState();
+      dbg('seekBoth(' + videoTimeSec.toFixed(1) + ') ytState=' + ytState);
       pendingSeekTarget = videoTimeSec;
       if (useLocalAudio) {
         grainStop();
@@ -390,8 +428,8 @@
       // change — the player just jumps the playhead silently. In that
       // case onStateChange never fires and the grain player would be
       // left stopped (or running from the old position). Sync now.
-      if (useLocalAudio && grainReady &&
-          ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+      if (useLocalAudio && grainReady && ytState === YT.PlayerState.PLAYING) {
+        dbg('seekBoth: YT already PLAYING, syncing grain immediately');
         grainHardSync(videoTimeSec + LATENCY_OFFSET);
       }
     }
@@ -470,7 +508,9 @@
 
     async function startLoop(i) {
       if (!ytReady) return;
+      dbg('startLoop(' + i + ') grainReady=' + grainReady + ' toneStarted=' + toneStarted);
       await ensureToneStarted();
+      dbg('startLoop: Tone started, ctx=' + Tone.context.state);
       playActive = false;
       playBtn.textContent = 'play piece';
       currentLoopIndex = i;
@@ -561,6 +601,9 @@
             const state = event.data;
 
             if (state === YT.PlayerState.PLAYING) {
+              const ytTime = ytPlayer.getCurrentTime();
+              dbg('YT STATE: PLAYING ytTime=' + ytTime.toFixed(1) + ' pending=' + pendingSeekTarget + ' local=' + useLocalAudio + ' ready=' + grainReady + ' ctx=' + Tone.context.state);
+
               // Debounce: YouTube often fires PLAYING before the seek
               // has fully settled. Wait 200ms before trusting currentTime.
               playingDebounceUntil = performance.now() + DEBOUNCE_MS;
@@ -569,6 +612,7 @@
               // (cross-origin) can cause the parent context to suspend
               if (Tone.context.state === 'suspended') {
                 Tone.context.resume();
+                dbg('AudioContext was suspended — resuming');
               }
 
               if (useLocalAudio && grainReady) {
@@ -578,24 +622,28 @@
                 // debounce clears and YouTube's clock settles.
                 const syncTime = (pendingSeekTarget !== null)
                   ? pendingSeekTarget
-                  : ytPlayer.getCurrentTime();
+                  : ytTime;
                 pendingSeekTarget = null;
                 grainHardSync(syncTime + LATENCY_OFFSET);
               } else {
+                dbg('SKIP grain start: local=' + useLocalAudio + ' ready=' + grainReady);
                 pendingSeekTarget = null;
               }
               startSyncLoop();
 
             } else if (state === YT.PlayerState.PAUSED) {
+              dbg('YT STATE: PAUSED');
               if (useLocalAudio) grainStop();
               stopSyncLoop();
 
             } else if (state === YT.PlayerState.BUFFERING) {
+              dbg('YT STATE: BUFFERING ytTime=' + ytPlayer.getCurrentTime().toFixed(1));
               // YouTube is rebuffering — stop grain to prevent it
               // from running ahead while video is stalled
               if (useLocalAudio) grainStop();
 
             } else if (state === YT.PlayerState.ENDED) {
+              dbg('YT STATE: ENDED');
               playActive = false;
               playBtn.textContent = 'play piece';
               if (useLocalAudio) grainStop();
