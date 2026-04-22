@@ -36,7 +36,7 @@ The sync engine was rebuilt after extensive debugging and two external code revi
    - **BUFFERING handling**: grain player stops immediately when YouTube enters BUFFERING state, preventing it from running ahead
    - At loop boundaries, grain is stopped before seeking to prevent blips
 
-### PLL Tuning Constants (v2.2)
+### PLL Tuning Constants (v2.7)
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
@@ -111,6 +111,13 @@ Seeking near the end of the recording could pass an offset past the buffer durat
 ### Grain splice artifacts on hard re-sync (v2.1 fix)
 Calling `stop()` and `start()` in the same execution block could leave stale grains in the AudioContext. Fixed by using a 50ms look-ahead (`Tone.now() + 0.05`) on the start time, giving the context a moment to clear.
 
+### Cold-start silence bug (v2.7 fix)
+**Root cause**: Calling `grainPlayer.stop()` on a GrainPlayer that has never been started corrupts its internal scheduling state (likely the `_tick` or `_active` flags in Tone.js's Source class). The subsequent `.start()` silently fails — no audio output, no error.
+**How it manifested**: First click of "loop section" or "play piece" after page load always produced silence. Stopping and clicking again worked because by then the GrainPlayer had been through a full start/stop cycle and its internals were initialized.
+**Diagnosis**: Added visible diagnostic logging, which confirmed the code was executing correctly (right position, right rate, buffer loaded, AudioContext running) — the bug was below our code, in the Tone.js lifecycle.
+**Fix**: Gate all `grainPlayer.stop()` calls behind `if (grainIsPlaying)`. The first `grainHardSync` call now goes straight to `.start()` without a preceding `.stop()`, preserving the GrainPlayer's initial state.
+**Confirmed by**: Gemini review 7 validated the diagnosis and the fix approach.
+
 ## External Code Reviews (Gemini)
 
 Three reviews were conducted. Key findings and their disposition:
@@ -136,6 +143,20 @@ Confirmed fixes were valid. Raised four new issues:
 3. **Buffer loaded guard**: `buffer.duration` could be 0 if accessed before load completes. **Fixed** in v2.2 — added `!grainPlayer.buffer.loaded` check to `grainHardSync`.
 4. **YouTube IPC latency**: `getCurrentTime()` lags actual playback by ~50-150ms due to iframe IPC. **Fixed** in v2.2 — added `LATENCY_OFFSET` constant (default 0, tune by ear).
 5. **YouTube native loop wrap-around**: No `onStateChange` event when YouTube loops via context menu. **Fixed** in v2.2 — rAF loop detects backward time jump >1s and forces hard re-sync.
+
+### Review 5 — v2.2 validation
+Confirmed proportional nudge is correct. Raised two actionable issues:
+1. **Epsilon-gate playbackRate writes**: YouTube's ~5-10Hz clock polled at 60Hz rAF causes stair-stepping — frequent near-identical rate writes to the GrainPlayer. **Fixed** in v2.3 — skip write if change < 0.0005.
+2. **Suspended AudioContext**: Clicking inside the cross-origin YouTube iframe can suspend the parent context. **Fixed** in v2.3 — check `Tone.context.state` and call `resume()` in the PLAYING handler.
+
+### Review 6 — v2.4/v2.5 logic review
+Identified two critical logic bugs:
+1. **Ghost target**: When YouTube is already PLAYING, `seekTo()` may not trigger `onStateChange`. The grain player would be left running from the old position (the "random spot" bug). **Fixed** in v2.5 — `seekBoth` calls `grainHardSync` immediately if YouTube is already playing.
+2. **Loop wrap-around**: Same issue — rAF loop called `ytPlayer.seekTo(start)` at loop boundary but relied on `onStateChange` to restart grain. **Fixed** in v2.5 — hard-sync grain immediately in the rAF loop.
+3. **Zombified loop / warp protection**: If user manually seeks past the loop end by >5s, the rAF loop was snapping them back. **Fixed** in v2.6 — detect overshoot >5s as manual seek and silently disable the loop.
+
+### Review 7 — Cold-start diagnosis
+Validated the diagnostic logging findings. Confirmed that calling `grainPlayer.stop()` on an uninitialized GrainPlayer corrupts its internal scheduling state. Recommended state-gating all `.stop()` calls behind a playback flag. **Fixed** in v2.7 — gate behind `grainIsPlaying`.
 
 ## Remaining Questions
 
@@ -165,8 +186,8 @@ Loops are defined in the `LOOPS` config array with start/end timestamps and labe
 - **`Tone.start()`** must be called on a user gesture (browser autoplay policy) — handled automatically when user clicks "local file" or any play button
 
 ### Key Functions (v2)
-- `grainHardSync(audioTime)` — stops grain, restarts at specified position with target rate; clamps to buffer bounds; uses 50ms look-ahead
-- `grainStop()` — saves estimated position, stops playback
+- `grainHardSync(audioTime)` — stops grain (only if playing), restarts at specified position with target rate; clamps to buffer bounds; uses 50ms look-ahead
+- `grainStop()` — saves estimated position, stops playback (only if playing)
 - `estimateGrainPosition()` — drift measurement only, uses `currentAppliedRate`
 - `startSyncLoop()` / `stopSyncLoop()` — manages rAF-based PLL loop
 - `seekBoth(videoTimeSec)` — stops grain, seeks YouTube (grain restarts via onStateChange)

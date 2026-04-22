@@ -248,7 +248,12 @@
       // Clamp to valid buffer range — seeking past the end causes silence
       const bufDuration = grainPlayer.buffer.duration;
       const t = Math.max(0, Math.min(audioTime, bufDuration - 0.1));
-      grainPlayer.stop();
+      // Only stop if actually playing — calling stop() on a never-started
+      // GrainPlayer corrupts its internal scheduling state, causing the
+      // subsequent start() to silently fail (the "cold start" bug)
+      if (grainIsPlaying) {
+        grainPlayer.stop();
+      }
       // Small look-ahead so AudioContext clears previous grains before
       // starting new ones — prevents artifacts at the splice point
       const startTime = Tone.now() + 0.05;
@@ -266,9 +271,11 @@
     // ── Stop grain ──
     function grainStop() {
       if (!grainPlayer) return;
-      // Save estimated position in case we need it later
       lastGrainStartTime = estimateGrainPosition();
-      grainPlayer.stop();
+      // Only stop if actually playing — see cold-start bug note above
+      if (grainIsPlaying) {
+        grainPlayer.stop();
+      }
       grainIsPlaying = false;
     }
 
