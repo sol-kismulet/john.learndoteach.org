@@ -435,6 +435,14 @@
       speedDisplay.textContent = r.toFixed(2) + 'x';
     });
 
+    // Reset speed on load — browser may restore old slider value
+    // but YouTube doesn't restore its rate, causing mismatch
+    (function syncSpeedOnLoad() {
+      speedInput.value = 1;
+      currentPlaybackRate = 1;
+      speedDisplay.textContent = '1.00x';
+    })();
+
     // ── Build loops ──
     LOOPS.forEach(loop => {
       createLoopElement(loop.start, loop.end, loop.label);
