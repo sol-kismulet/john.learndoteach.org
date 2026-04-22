@@ -145,8 +145,8 @@
         syncStatus.textContent = 'loading audio buffer…';
         grainPlayer = new Tone.GrainPlayer({
           url: AUDIO_URL,
-          grainSize: 0.5,
-          overlap: 0.3,
+          grainSize: 1.0,
+          overlap: 0.5,
           loop: false,
           onload: () => {
             grainReady = true;
