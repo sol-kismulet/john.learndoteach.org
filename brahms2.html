@@ -305,14 +305,26 @@
           if (loopActive && currentLoopIndex !== null) {
             const start = parseTime(loops[currentLoopIndex].start.value);
             const end = parseTime(loops[currentLoopIndex].end.value);
-            if (end > start && videoTime >= end) {
-              // Wrap the loop: seek YouTube and hard-sync grain immediately.
-              // We can't rely on onStateChange — YouTube may stay in PLAYING
-              // state and just jump the playhead without firing an event.
-              grainStop();
-              ytPlayer.seekTo(start, true);
-              grainHardSync(start + LATENCY_OFFSET);
-              pendingSeekTarget = null; // we already synced
+            const overshoot = videoTime - end;
+            if (end > start && overshoot > 0) {
+              if (overshoot < 5.0) {
+                // Natural playback past the loop end — wrap back
+                grainStop();
+                ytPlayer.seekTo(start, true);
+                grainHardSync(start + LATENCY_OFFSET);
+                pendingSeekTarget = null;
+              } else {
+                // More than 5s past loop end — this is a manual seek or
+                // YouTube resumed from a distant position. Kill the loop
+                // rather than snapping the user back to a stale boundary.
+                // Don't call stopLoop() — that would pause playback. Just
+                // disable the loop flag and reset the button text.
+                if (currentLoopIndex !== null) {
+                  loops[currentLoopIndex].button.textContent = 'loop section';
+                }
+                loopActive = false;
+                currentLoopIndex = null;
+              }
               return;
             }
           }
