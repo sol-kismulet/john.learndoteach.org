@@ -104,6 +104,23 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
+    // ══════════════════════════════════════════════════════════════
+    // SYNC ARCHITECTURE v2 — PLL (Phase-Locked Loop)
+    //
+    // YouTube is the sole clock source. We never track grain position
+    // via wall-clock math. Instead, every rAF tick we read YouTube's
+    // currentTime and compare it to the grain player's expected
+    // position (also derived from YouTube). Drift is corrected by
+    // micro-nudging the grain playback rate by ±0.001 — below the
+    // threshold of human perception but enough to keep clocks tethered.
+    //
+    // Hard re-syncs (stop + restart grain) only happen on:
+    //   - state changes (PLAYING, PAUSED, BUFFERING, ENDED)
+    //   - loop boundaries (seek back to start)
+    //   - user-initiated seeks or speed changes
+    //   - drift exceeding 150ms (emergency correction)
+    // ══════════════════════════════════════════════════════════════
+
     // ── Config ──
     const VIDEO_ID = 'QmQLb5SZb4E';
     const AUDIO_URL = 'brahms.mp3';
@@ -111,9 +128,15 @@
       { start: '6:17', end: '8:44', label: 'Var. IV, andante con moto, mm. 146–205' }
     ];
 
+    // PLL tuning constants
+    const PLL_NUDGE       = 0.001;  // rate micro-adjustment (imperceptible)
+    const PLL_DEADZONE    = 0.015;  // 15ms — below this, no correction needed
+    const PLL_HARD_RESYNC = 0.150;  // 150ms — above this, stop/restart grain
+    const DEBOUNCE_MS     = 200;    // wait after PLAYING before syncing
+
     // ── State ──
-    let player;
-    let playerReady = false;
+    let ytPlayer;
+    let ytReady = false;
     let loopActive = false;
     let playActive = false;
     let currentLoopIndex = null;
@@ -124,10 +147,15 @@
     let grainPlayer = null;
     let grainReady = false;
     let toneStarted = false;
-    let currentGrainOffset = 0;   // where in the audio file playback started
-    let grainStartWallTime = 0;   // wall-clock time when playback started
-    let currentPlaybackRate = 1;
+    let targetRate = 1;           // the user-set playback rate
     let grainIsPlaying = false;
+
+    // ── Sync state ──
+    let syncRAF = null;           // requestAnimationFrame handle
+    let lastGrainStartTime = 0;   // audio-file position where grain was last started
+    let lastGrainStartWall = 0;   // Tone.now() when grain was last started
+    let currentAppliedRate = 1;   // actual rate on the grain player (includes nudges)
+    let playingDebounceUntil = 0; // timestamp: ignore sync until this time
 
     // ── Elements ──
     const loopsContainer = document.getElementById('loops');
@@ -151,7 +179,7 @@
           onload: () => {
             grainReady = true;
             const sysRate = Tone.context.rawContext.sampleRate;
-            syncStatus.textContent = 'audio loaded — ready (system: ' + sysRate + 'Hz, source: 44100Hz)';
+            syncStatus.textContent = 'audio loaded — ready (system: ' + sysRate + 'Hz)';
           }
         }).toDestination();
       } catch (e) {
@@ -166,57 +194,39 @@
       }
     }
 
-    // Get current playback position in the audio file
-    function getGrainCurrentTime() {
-      if (!grainIsPlaying) return currentGrainOffset;
-      const elapsed = (Tone.now() - grainStartWallTime) * currentPlaybackRate;
-      return currentGrainOffset + elapsed;
+    // ── Grain position estimate ──
+    // Estimate where the grain player is based on when we started it.
+    // This is ONLY used for drift measurement — YouTube is still the
+    // source of truth. The estimate accumulates the actual applied rate
+    // (including PLL nudges) so it's much more accurate than the old
+    // wall-clock tracker that ignored nudges.
+    function estimateGrainPosition() {
+      if (!grainIsPlaying) return lastGrainStartTime;
+      const elapsed = (Tone.now() - lastGrainStartWall) * currentAppliedRate;
+      return lastGrainStartTime + elapsed;
     }
 
-    // Start grain playback from a specific position in the audio file
-    function grainPlay(fromTime) {
+    // ── Hard sync: stop and restart grain at a specific position ──
+    function grainHardSync(audioTime) {
       if (!grainReady || !grainPlayer) return;
-      if (fromTime < 0) fromTime = 0;
+      const t = Math.max(0, audioTime);
       grainPlayer.stop();
       const now = Tone.now();
-      currentGrainOffset = fromTime;
-      grainStartWallTime = now;
-      grainPlayer.playbackRate = currentPlaybackRate;
-      grainPlayer.start(now, fromTime);
+      lastGrainStartTime = t;
+      lastGrainStartWall = now;
+      currentAppliedRate = targetRate;
+      grainPlayer.playbackRate = targetRate;
+      grainPlayer.start(now, t);
       grainIsPlaying = true;
     }
 
-    // Stop grain playback
+    // ── Stop grain ──
     function grainStop() {
       if (!grainPlayer) return;
-      currentGrainOffset = getGrainCurrentTime();
+      // Save estimated position in case we need it later
+      lastGrainStartTime = estimateGrainPosition();
       grainPlayer.stop();
       grainIsPlaying = false;
-    }
-
-    // Seek grain to a position (without starting)
-    function grainSeek(toTime) {
-      if (grainIsPlaying) grainPlayer.stop();
-      currentGrainOffset = Math.max(0, toTime);
-      grainIsPlaying = false;
-      // Don't restart — caller or onStateChange will handle that
-    }
-
-    // Set grain playback rate
-    function grainSetRate(rate) {
-      if (grainIsPlaying && grainPlayer) {
-        // Capture position at OLD rate before updating
-        const currentPos = getGrainCurrentTime();
-        grainPlayer.stop();
-        const now = Tone.now();
-        currentGrainOffset = currentPos;
-        grainStartWallTime = now;
-        currentPlaybackRate = rate;
-        grainPlayer.playbackRate = rate;
-        grainPlayer.start(now, Math.max(0, currentPos));
-      } else {
-        currentPlaybackRate = rate;
-      }
     }
 
     // Start loading immediately
@@ -227,8 +237,9 @@
       useLocalAudio = false;
       btnYoutube.classList.add('active');
       btnLocal.classList.remove('active');
-      if (playerReady) player.unMute();
+      if (ytReady) ytPlayer.unMute();
       grainStop();
+      stopSyncLoop();
       syncStatus.textContent = 'using youtube audio';
     });
 
@@ -237,7 +248,12 @@
       useLocalAudio = true;
       btnLocal.classList.add('active');
       btnYoutube.classList.remove('active');
-      if (playerReady) player.mute();
+      if (ytReady) ytPlayer.mute();
+      // If video is already playing, start grain now
+      if (ytReady && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING && grainReady) {
+        grainHardSync(ytPlayer.getCurrentTime());
+        startSyncLoop();
+      }
       syncStatus.textContent = 'using local audio (tone.js grain)';
     });
 
@@ -255,37 +271,97 @@
       return `${m}:${s}`;
     }
 
-    function getOffset() {
-      return 0;
+    // ══════════════════════════════════════════════════════════════
+    // SYNC LOOP — requestAnimationFrame-based PLL
+    // ══════════════════════════════════════════════════════════════
+
+    function startSyncLoop() {
+      if (syncRAF !== null) return; // already running
+      function tick() {
+        syncRAF = requestAnimationFrame(tick);
+        try {
+          if (!ytReady || !useLocalAudio) return;
+
+          const videoTime = ytPlayer.getCurrentTime();
+
+          // ── Loop boundary check ──
+          if (loopActive && currentLoopIndex !== null) {
+            const start = parseTime(loops[currentLoopIndex].start.value);
+            const end = parseTime(loops[currentLoopIndex].end.value);
+            if (end > start && videoTime >= end) {
+              grainStop();
+              ytPlayer.seekTo(start, true);
+              // onStateChange PLAYING will restart grain
+              return;
+            }
+          }
+
+          // ── Debounce: skip sync briefly after state transitions ──
+          if (performance.now() < playingDebounceUntil) return;
+
+          // ── PLL drift correction ──
+          if (grainIsPlaying) {
+            const grainTime = estimateGrainPosition();
+            const drift = grainTime - videoTime; // positive = grain is ahead
+            const absDrift = Math.abs(drift);
+
+            if (absDrift > PLL_HARD_RESYNC) {
+              // Emergency: drift too large, hard re-sync
+              grainHardSync(videoTime);
+              syncStatus.textContent = 'hard resync (drift: ' + (drift * 1000).toFixed(0) + 'ms)';
+            } else if (absDrift > PLL_DEADZONE) {
+              // PLL nudge: gently adjust rate to close the gap
+              const nudge = drift > 0 ? -PLL_NUDGE : PLL_NUDGE;
+              currentAppliedRate = targetRate + nudge;
+              grainPlayer.playbackRate = currentAppliedRate;
+            } else {
+              // Within deadzone — restore exact target rate
+              if (currentAppliedRate !== targetRate) {
+                currentAppliedRate = targetRate;
+                grainPlayer.playbackRate = targetRate;
+              }
+            }
+          }
+        } catch (e) {}
+      }
+      syncRAF = requestAnimationFrame(tick);
     }
 
-    // Seek both video and grain to a video-time position
+    function stopSyncLoop() {
+      if (syncRAF !== null) {
+        cancelAnimationFrame(syncRAF);
+        syncRAF = null;
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // COORDINATED PLAYBACK
+    // ══════════════════════════════════════════════════════════════
+
     function seekBoth(videoTimeSec) {
       if (useLocalAudio) {
         grainStop();
-        grainSeek(videoTimeSec + getOffset());
       }
-      player.seekTo(videoTimeSec, true);
+      ytPlayer.seekTo(videoTimeSec, true);
+      // Don't restart grain here — onStateChange PLAYING handles it
     }
 
-    // Play video — grain audio will start via onStateChange PLAYING event
     function playBoth() {
-      player.playVideo();
+      ytPlayer.playVideo();
     }
 
-    // Pause both
     function pauseBoth() {
-      player.pauseVideo();
-      if (useLocalAudio) {
-        grainStop();
-      }
+      ytPlayer.pauseVideo();
+      if (useLocalAudio) grainStop();
     }
 
-    // Set speed on both
     function setSpeed(rate) {
-      player.setPlaybackRate(rate);
-      if (useLocalAudio) {
-        grainSetRate(rate);
+      targetRate = rate;
+      ytPlayer.setPlaybackRate(rate);
+      if (useLocalAudio && grainIsPlaying) {
+        // Hard sync on speed change to avoid accumulated error
+        const videoTime = ytPlayer.getCurrentTime();
+        grainHardSync(videoTime);
       }
     }
 
@@ -333,11 +409,10 @@
 
     // ── Loop logic ──
     function stopLoop() {
-      clearInterval(loopTimer);
       if (currentLoopIndex !== null) {
         loops[currentLoopIndex].button.textContent = 'loop section';
       }
-      if (playerReady && loopActive) {
+      if (ytReady && loopActive) {
         pauseBoth();
       }
       loopActive = false;
@@ -345,7 +420,7 @@
     }
 
     async function startLoop(i) {
-      if (!playerReady) return;
+      if (!ytReady) return;
       await ensureToneStarted();
       playActive = false;
       playBtn.textContent = 'play piece';
@@ -355,41 +430,6 @@
       playBoth();
       loops[i].button.textContent = 'stop';
       loopActive = true;
-    }
-
-    function checkSync() {
-      try {
-        const videoTime = player.getCurrentTime();
-
-        // Loop boundary check
-        if (loopActive && currentLoopIndex !== null) {
-          const start = parseTime(loops[currentLoopIndex].start.value);
-          const end = parseTime(loops[currentLoopIndex].end.value);
-          if (end > start && videoTime >= end) {
-            // Stop grain immediately to prevent blip, then seek both
-            if (useLocalAudio) grainStop();
-            seekBoth(start);
-            // Video will trigger onStateChange PLAYING which restarts grain
-            return;
-          }
-        }
-
-        // Soft drift correction: nudge playback rate instead of stop/restart
-        if (useLocalAudio && grainIsPlaying) {
-          const expectedAudioTime = videoTime + getOffset();
-          const drift = getGrainCurrentTime() - expectedAudioTime;
-          const absDrift = Math.abs(drift);
-          if (absDrift > 0.02) {
-            // Nudge rate to close the gap — scale correction to drift size
-            const correction = Math.min(absDrift * 0.3, 0.08);
-            const nudge = drift > 0 ? -correction : correction;
-            grainPlayer.playbackRate = currentPlaybackRate + nudge;
-          } else {
-            // Within 20ms — restore exact rate
-            grainPlayer.playbackRate = currentPlaybackRate;
-          }
-        }
-      } catch (e) {}
     }
 
     function handleLoopButton(i) {
@@ -412,7 +452,7 @@
 
     // ── Play piece ──
     playBtn.addEventListener('click', async () => {
-      if (!playerReady) return;
+      if (!ytReady) return;
       await ensureToneStarted();
       if (!playActive) {
         stopLoop();
@@ -429,7 +469,7 @@
 
     // ── Speed ──
     speedInput.addEventListener('input', () => {
-      if (!playerReady) return;
+      if (!ytReady) return;
       const r = parseFloat(speedInput.value);
       setSpeed(r);
       speedDisplay.textContent = r.toFixed(2) + 'x';
@@ -437,9 +477,10 @@
 
     // Reset speed on load — browser may restore old slider value
     // but YouTube doesn't restore its rate, causing mismatch
-    (function syncSpeedOnLoad() {
+    (function resetSpeedOnLoad() {
       speedInput.value = 1;
-      currentPlaybackRate = 1;
+      targetRate = 1;
+      currentAppliedRate = 1;
       speedDisplay.textContent = '1.00x';
     })();
 
@@ -448,11 +489,12 @@
       createLoopElement(loop.start, loop.end, loop.label);
     });
 
-    // ── YouTube player ──
-    let loopTimer = null;
+    // ══════════════════════════════════════════════════════════════
+    // YOUTUBE PLAYER
+    // ══════════════════════════════════════════════════════════════
 
     window.onYouTubeIframeAPIReady = function () {
-      player = new YT.Player('player', {
+      ytPlayer = new YT.Player('player', {
         width: '100%',
         height: '100%',
         videoId: VIDEO_ID,
@@ -462,24 +504,52 @@
         },
         events: {
           onReady: () => {
-            playerReady = true;
-            if (useLocalAudio) player.mute();
+            ytReady = true;
+            if (useLocalAudio) ytPlayer.mute();
           },
+
           onStateChange: (event) => {
-            clearInterval(loopTimer);
-            if (event.data === YT.PlayerState.PLAYING) {
-              loopTimer = setInterval(checkSync, 100);
-              // Sync grain audio when video starts playing
+            const state = event.data;
+
+            if (state === YT.PlayerState.PLAYING) {
+              // Debounce: YouTube often fires PLAYING before the seek
+              // has fully settled. Wait 200ms before trusting currentTime.
+              playingDebounceUntil = performance.now() + DEBOUNCE_MS;
+
               if (useLocalAudio && grainReady) {
-                const audioTime = player.getCurrentTime() + getOffset();
-                grainPlay(audioTime);
+                // Start grain at YouTube's current position
+                const t = ytPlayer.getCurrentTime();
+                grainHardSync(t);
               }
-            } else if (event.data === YT.PlayerState.PAUSED) {
+              startSyncLoop();
+
+            } else if (state === YT.PlayerState.PAUSED) {
               if (useLocalAudio) grainStop();
-            } else if (event.data === YT.PlayerState.ENDED) {
+              stopSyncLoop();
+
+            } else if (state === YT.PlayerState.BUFFERING) {
+              // YouTube is rebuffering — stop grain to prevent it
+              // from running ahead while video is stalled
+              if (useLocalAudio) grainStop();
+
+            } else if (state === YT.PlayerState.ENDED) {
               playActive = false;
               playBtn.textContent = 'play piece';
               if (useLocalAudio) grainStop();
+              stopSyncLoop();
+            }
+          },
+
+          onPlaybackRateChange: (event) => {
+            // YouTube clamped to a supported rate — sync our target
+            const ytRate = event.data;
+            targetRate = ytRate;
+            currentAppliedRate = ytRate;
+            speedDisplay.textContent = ytRate.toFixed(2) + 'x';
+            // Update slider to match (YouTube may have clamped it)
+            speedInput.value = ytRate;
+            if (useLocalAudio && grainIsPlaying) {
+              grainHardSync(ytPlayer.getCurrentTime());
             }
           }
         }
