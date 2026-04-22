@@ -306,10 +306,13 @@
             const start = parseTime(loops[currentLoopIndex].start.value);
             const end = parseTime(loops[currentLoopIndex].end.value);
             if (end > start && videoTime >= end) {
+              // Wrap the loop: seek YouTube and hard-sync grain immediately.
+              // We can't rely on onStateChange — YouTube may stay in PLAYING
+              // state and just jump the playhead without firing an event.
               grainStop();
-              pendingSeekTarget = start;
               ytPlayer.seekTo(start, true);
-              // onStateChange PLAYING will restart grain
+              grainHardSync(start + LATENCY_OFFSET);
+              pendingSeekTarget = null; // we already synced
               return;
             }
           }
@@ -371,7 +374,14 @@
         grainStop();
       }
       ytPlayer.seekTo(videoTimeSec, true);
-      // Don't restart grain here — onStateChange PLAYING handles it
+      // If YouTube is already PLAYING, seekTo may not trigger a state
+      // change — the player just jumps the playhead silently. In that
+      // case onStateChange never fires and the grain player would be
+      // left stopped (or running from the old position). Sync now.
+      if (useLocalAudio && grainReady &&
+          ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+        grainHardSync(videoTimeSec + LATENCY_OFFSET);
+      }
     }
 
     function playBoth() {
