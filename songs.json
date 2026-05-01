@@ -327,6 +327,17 @@
         ]
       ]
     },
+    "the-swan": {
+      "title": "the swan — yo-yo ma",
+      "videoId": "3qrKjywjo7Q",
+      "loops": [
+        { "start": "0:00", "end": "0:44", "label": "Opening theme" },
+        { "start": "0:44", "end": "1:20", "label": "Theme continues" },
+        { "start": "1:20", "end": "1:55", "label": "Middle section" },
+        { "start": "1:55", "end": "2:42", "label": "Return & ending" }
+      ],
+      "footer": "Saint-Saëns — <em>Le Cygne</em> from <em>The Carnival of the Animals</em>. Yo-Yo Ma with Kathryn Stott, piano."
+    },
     "tera-mastaana": {
       "title": "tera mastaana",
       "audio": "tera-mastaana--from-madness.mp3",
