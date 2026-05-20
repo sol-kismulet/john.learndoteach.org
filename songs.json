@@ -1,6 +1,13 @@
 {
   "concerts": {},
   "songs": {
+    "allemande": {
+      "title": "allemande",
+      "videoId": "7qpvIepLWPI",
+      "loops": [
+        { "start": "0:00", "end": "0:30", "label": "Section 1" }
+      ]
+    },
     "amazing-grace": {
       "title": "amazing grace",
       "audio": "amazing-grace.mp3",
