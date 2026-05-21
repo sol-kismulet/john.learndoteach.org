@@ -123,39 +123,34 @@
       }
 
       function formatTimeFine(sec) {
-        const safe = Math.max(0, sec);
-        const m = Math.floor(safe / 60);
-        const rem = safe - m * 60;
-        const whole = Math.floor(rem).toString().padStart(2, '0');
-        const tenths = Math.round((rem - Math.floor(rem)) * 10);
-        if (tenths === 10) {
-          return formatTimeFine((m * 60) + Math.floor(rem) + 1);
-        }
-        return `${m}:${whole}.${tenths}`;
+        const tenths = Math.max(0, Math.round(sec * 10));
+        const m = Math.floor(tenths / 600);
+        const s = String(Math.floor(tenths / 10) % 60).padStart(2, '0');
+        return `${m}:${s}.${tenths % 10}`;
       }
 
       function nudge(input, delta) {
-        const next = Math.max(0, parseTime(input.value) + delta);
-        input.value = formatTimeFine(next);
+        const cur = parseTime(input.value);
+        const base = Number.isFinite(cur) ? cur : 0;
+        input.value = formatTimeFine(base + delta);
       }
 
       function makeNudgeButtons(input) {
         const wrap = document.createElement('span');
         wrap.className = 'nudge';
-        const minus = document.createElement('button');
-        minus.type = 'button';
-        minus.className = 'nudge-btn';
-        minus.textContent = '−';
-        minus.title = '−0.1s';
-        minus.addEventListener('click', () => nudge(input, -0.1));
-        const plus = document.createElement('button');
-        plus.type = 'button';
-        plus.className = 'nudge-btn';
-        plus.textContent = '+';
-        plus.title = '+0.1s';
-        plus.addEventListener('click', () => nudge(input, 0.1));
-        wrap.appendChild(minus);
-        wrap.appendChild(plus);
+        const target = input.className;
+        const mk = (label, delta, action) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'nudge-btn';
+          b.textContent = label;
+          b.title = `${label}0.1s`;
+          b.setAttribute('aria-label', `${action} ${target} by 0.1 seconds`);
+          b.addEventListener('click', () => nudge(input, delta));
+          return b;
+        };
+        wrap.appendChild(mk('−', -0.1, 'decrease'));
+        wrap.appendChild(mk('+', 0.1, 'increase'));
         return wrap;
       }
 
@@ -268,7 +263,8 @@
         const last = loops[loops.length - 1];
         const startVal = last.end.value;
         const startSec = parseTime(startVal);
-        createLoopElement(startVal, formatTime(startSec + 10));
+        const fmt = fineTune ? formatTimeFine : formatTime;
+        createLoopElement(startVal, fmt(startSec + 10));
       });
 
       playBtn.addEventListener('click', () => {
