@@ -49,6 +49,19 @@ body {
   text-align: center;
 }
 
+.nudge {
+  display: inline-flex;
+  gap: 0.2em;
+  margin-left: 0.3em;
+  vertical-align: middle;
+}
+
+.nudge-btn {
+  font-size: 0.9rem;
+  padding: 0.1em 0.45em;
+  line-height: 1;
+}
+
 .loop .loop-btn {
   font-size: 1rem;
   padding: 0.4em 0.8em;

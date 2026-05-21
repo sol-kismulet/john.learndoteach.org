@@ -4,6 +4,7 @@
     "allemande": {
       "title": "allemande",
       "videoId": "7qpvIepLWPI",
+      "fineTune": true,
       "loops": [
         { "start": "0:00", "end": "0:30", "label": "Section 1" }
       ]
