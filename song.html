@@ -98,6 +98,7 @@
       let loops = [];
       let isVideoMode = false;
       let isAudioMode = false;
+      let fineTune = false;
 
       const loopsContainer = document.getElementById('loops');
       const addLoopBtn = document.getElementById('add-loop');
@@ -121,6 +122,38 @@
         return `${m}:${s}`;
       }
 
+      function formatTimeFine(sec) {
+        const tenths = Math.max(0, Math.round(sec * 10));
+        const m = Math.floor(tenths / 600);
+        const s = String(Math.floor(tenths / 10) % 60).padStart(2, '0');
+        return `${m}:${s}.${tenths % 10}`;
+      }
+
+      function nudge(input, delta) {
+        const cur = parseTime(input.value);
+        const base = Number.isFinite(cur) ? cur : 0;
+        input.value = formatTimeFine(base + delta);
+      }
+
+      function makeNudgeButtons(input) {
+        const wrap = document.createElement('span');
+        wrap.className = 'nudge';
+        const target = input.className;
+        const mk = (label, delta, action) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'nudge-btn';
+          b.textContent = label;
+          b.title = `${label}0.1s`;
+          b.setAttribute('aria-label', `${action} ${target} by 0.1 seconds`);
+          b.addEventListener('click', () => nudge(input, delta));
+          return b;
+        };
+        wrap.appendChild(mk('−', -0.1, 'decrease'));
+        wrap.appendChild(mk('+', 0.1, 'increase'));
+        return wrap;
+      }
+
       function createLoopElement(startVal, endVal, label) {
         if (label) {
           const labelDiv = document.createElement('div');
@@ -139,6 +172,7 @@
         startInput.className = 'start';
         startInput.value = startVal;
         startLabel.appendChild(startInput);
+        if (fineTune) startLabel.appendChild(makeNudgeButtons(startInput));
 
         const endLabel = document.createElement('label');
         endLabel.textContent = 'end ';
@@ -147,6 +181,7 @@
         endInput.className = 'end';
         endInput.value = endVal;
         endLabel.appendChild(endInput);
+        if (fineTune) endLabel.appendChild(makeNudgeButtons(endInput));
 
         const btn = document.createElement('button');
         btn.textContent = 'loop section';
@@ -228,7 +263,8 @@
         const last = loops[loops.length - 1];
         const startVal = last.end.value;
         const startSec = parseTime(startVal);
-        createLoopElement(startVal, formatTime(startSec + 10));
+        const fmt = fineTune ? formatTimeFine : formatTime;
+        createLoopElement(startVal, fmt(startSec + 10));
       });
 
       playBtn.addEventListener('click', () => {
@@ -301,6 +337,8 @@
           if (song.speedMin) {
             speedInput.min = song.speedMin;
           }
+
+          fineTune = !!song.fineTune;
 
           // Build loop elements from JSON
           (song.loops || []).forEach((loop) => {
