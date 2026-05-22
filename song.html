@@ -44,6 +44,21 @@
     #audio-wrapper.active {
       display: block;
     }
+    #score-wrapper {
+      width: min(560px, 90vw);
+      display: none;
+      padding: 0.75rem 0.5rem;
+      background: #fafafa;
+      border-radius: 4px;
+    }
+    #score-wrapper.active {
+      display: block;
+    }
+    #score-wrapper img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -60,6 +75,10 @@
 
   <div id="audio-wrapper">
     <audio id="audio" preload="auto"></audio>
+  </div>
+
+  <div id="score-wrapper">
+    <img id="score-img" alt="">
   </div>
 
   <div class="controls">
@@ -108,6 +127,17 @@
       const audioElement = document.getElementById('audio');
       const videoWrapper = document.getElementById('video-wrapper');
       const audioWrapper = document.getElementById('audio-wrapper');
+      const scoreWrapper = document.getElementById('score-wrapper');
+      const scoreImg = document.getElementById('score-img');
+
+      function showScore(src) {
+        if (!src) { scoreWrapper.classList.remove('active'); return; }
+        scoreImg.src = src;
+        scoreWrapper.classList.add('active');
+      }
+      function hideScore() {
+        scoreWrapper.classList.remove('active');
+      }
 
       function parseTime(t) {
         const parts = t.split(':');
@@ -154,7 +184,7 @@
         return wrap;
       }
 
-      function createLoopElement(startVal, endVal, label) {
+      function createLoopElement(startVal, endVal, label, scoreSrc) {
         if (label) {
           const labelDiv = document.createElement('div');
           labelDiv.className = 'loop-label';
@@ -194,7 +224,7 @@
         div.appendChild(btn);
         loopsContainer.appendChild(div);
 
-        loops.push({ start: startInput, end: endInput, button: btn });
+        loops.push({ start: startInput, end: endInput, button: btn, scoreSrc: scoreSrc || null });
       }
 
       function stopLoop() {
@@ -208,6 +238,7 @@
         }
         loopActive = false;
         currentLoopIndex = null;
+        hideScore();
       }
 
       function startLoop(i) {
@@ -226,6 +257,7 @@
         loops[i].button.textContent = 'stop';
         currentLoopIndex = i;
         loopActive = true;
+        showScore(loops[i].scoreSrc);
       }
 
       function checkLoop() {
@@ -345,7 +377,8 @@
             const start = Array.isArray(loop) ? loop[0] : loop.start;
             const end = Array.isArray(loop) ? loop[1] : loop.end;
             const label = Array.isArray(loop) ? null : loop.label;
-            createLoopElement(start, end, label);
+            const scoreSrc = Array.isArray(loop) ? null : loop.score;
+            createLoopElement(start, end, label, scoreSrc);
           });
 
           // Initialize YouTube player if video mode
