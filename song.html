@@ -238,7 +238,6 @@
         }
         loopActive = false;
         currentLoopIndex = null;
-        hideScore();
       }
 
       function startLoop(i) {
@@ -380,6 +379,10 @@
             const scoreSrc = Array.isArray(loop) ? null : loop.score;
             createLoopElement(start, end, label, scoreSrc);
           });
+
+          // Show the first loop's score by default
+          const firstScore = loops.find(l => l.scoreSrc);
+          if (firstScore) showScore(firstScore.scoreSrc);
 
           // Initialize YouTube player if video mode
           if (isVideoMode) {
