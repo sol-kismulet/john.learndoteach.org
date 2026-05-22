@@ -7,8 +7,8 @@
       "loops": [
         { "start": "0:00",   "end": "0:12.8", "label": "mm 1-4",   "score": "scores/mm-1-4.svg" },
         { "start": "0:12.8", "end": "0:19.3", "label": "mm 4-6",   "score": "scores/mm-4-6.svg" },
-        { "start": "0:19.3", "end": "0:24.0", "label": "mm 6-7",   "score": "scores/mm-6-7.svg" },
-        { "start": "0:24.0", "end": "0:30.6", "label": "mm 7-10",  "score": "scores/mm-7-10.svg" },
+        { "start": "0:19.3", "end": "0:24.0", "label": "mm 6-8",   "score": "scores/mm-6-8.svg" },
+        { "start": "0:24.0", "end": "0:30.6", "label": "mm 8-10",  "score": "scores/mm-8-10.svg" },
         { "start": "0:30.6", "end": "0:36.9", "label": "mm 10-12", "score": "scores/mm-10-12.svg" }
       ]
     }
