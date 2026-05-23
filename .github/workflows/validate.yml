@@ -1,0 +1,19 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate songs.json against schema
+        run: npx -y ajv-cli@5 validate --spec=draft7 --strict=false --all-errors -s songs.schema.json -d songs.json
+      - name: Check referenced assets exist
+        run: node tools/check-assets.mjs

@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "songs.json",
+  "type": "object",
+  "required": ["songs"],
+  "additionalProperties": false,
+  "properties": {
+    "_format": {
+      "description": "Human-facing cheat sheet, ignored by the app."
+    },
+    "concerts": {
+      "type": "object"
+    },
+    "songs": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/song" }
+    }
+  },
+  "definitions": {
+    "song": {
+      "type": "object",
+      "required": ["title"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string" },
+        "videoId": { "type": "string" },
+        "audio": { "type": "string" },
+        "loops": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/loop" }
+        },
+        "fineTune": { "type": "boolean" },
+        "scales": { "$ref": "#/definitions/scales" },
+        "drone": { "type": ["string", "null"] },
+        "speedMin": { "type": ["number", "string"] },
+        "footer": { "type": "string" },
+        "lyrics": { "type": "string" }
+      }
+    },
+    "loop": {
+      "type": "object",
+      "required": ["start", "end"],
+      "additionalProperties": false,
+      "properties": {
+        "start": { "type": "string" },
+        "end": { "type": "string" },
+        "label": { "type": "string" },
+        "score": { "type": "string" }
+      }
+    },
+    "scales": {
+      "type": "object",
+      "required": ["root", "items"],
+      "additionalProperties": false,
+      "properties": {
+        "root": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["mode"],
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": ["ionian", "major", "dorian", "phrygian", "lydian", "mixolydian", "aeolian", "minor", "natural minor", "locrian"]
+              },
+              "label": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
