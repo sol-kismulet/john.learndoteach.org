@@ -15,6 +15,7 @@
     "earth-song": {
       "title": "earth song",
       "videoId": "XAi3VTSdTxU",
+      "fineTune": true,
       "loops": [
         { "start": "0:00", "end": "1:00" }
       ]
