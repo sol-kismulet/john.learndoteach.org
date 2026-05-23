@@ -1,4 +1,19 @@
 {
+  "_format": {
+    "_note": "Ignored by the app (song.html / index.html only read \"songs\" and \"concerts\"). Quick reference for editors; see README.md for details.",
+    "song fields": {
+      "title": "display name (required)",
+      "videoId": "YouTube id — use this OR \"audio\"",
+      "audio": "audio file URL — use this OR \"videoId\"",
+      "loops": "[{ start, end, label?, score? }] — times as M:SS or M:SS.s",
+      "fineTune": "true to show 0.1s nudge buttons on loop times",
+      "scales": "true to show the A♭ scale-comparison buttons",
+      "drone": "note name to enable a drone, e.g. \"A♭\" or \"Eb3\" (octave optional, defaults to 3); omit or null = off",
+      "speedMin": "minimum value for the speed slider",
+      "footer": "HTML note shown below the controls",
+      "lyrics": "preformatted lyrics text"
+    }
+  },
   "concerts": {},
   "songs": {
     "allemande": {
