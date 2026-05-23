@@ -64,19 +64,6 @@
 <body>
   <a class="back" href="index.html">← back</a>
 
-  <div id="drone-panel">
-    <button id="drone-btn" type="button">A♭ drone</button>
-    <label class="drone-fifth">
-      <input id="drone-fifth" type="checkbox">
-      <span class="track"><span class="thumb"></span></span>
-      add 5th
-    </label>
-    <label class="drone-vol">
-      vol
-      <input id="drone-volume" type="range" min="0" max="0.7" step="0.01" value="0.35">
-    </label>
-  </div>
-
   <div class="title">
     <span id="song-title">loading…</span>
     <img src="feather.svg" alt="" class="feather">
@@ -113,6 +100,20 @@
   </div>
 
   <div id="footer-area"></div>
+
+  <div id="drone-panel">
+    <span class="drone-tag">drone</span>
+    <button id="drone-btn" type="button">A♭</button>
+    <label class="drone-fifth">
+      <input id="drone-fifth" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      add 5th
+    </label>
+    <label class="drone-vol">
+      vol
+      <input id="drone-volume" type="range" min="0" max="0.7" step="0.01" value="0.35">
+    </label>
+  </div>
 
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
@@ -233,7 +234,7 @@
 
         rootOsc.start(); fifthOsc.start(); noise.start();
         droneNodes = { ctx, rootOsc, fifthOsc, fifthGain, noise, gain };
-        droneBtn.textContent = 'stop drone';
+        droneBtn.textContent = 'stop';
         droneBtn.classList.add('on');
       }
 
@@ -247,7 +248,7 @@
         [rootOsc, fifthOsc, noise].forEach(o => { try { o.stop(now + 0.25); } catch (e) {} });
         setTimeout(() => { try { ctx.close(); } catch (e) {} }, 400);
         droneNodes = null;
-        droneBtn.textContent = 'A♭ drone';
+        droneBtn.textContent = 'A♭';
         droneBtn.classList.remove('on');
       }
 

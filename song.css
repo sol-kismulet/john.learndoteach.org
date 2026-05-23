@@ -132,36 +132,58 @@ a {
 }
 
 #drone-panel {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
   display: none;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.5rem;
-  z-index: 10;
+  flex-flow: row wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 1.1rem;
+  margin-top: auto;
+  padding-top: 1.5rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.05em;
 }
 
 #drone-panel.active {
   display: flex;
 }
 
+.drone-tag {
+  font-style: italic;
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+}
+
 #drone-btn {
-  font-size: 1rem;
-  padding: 0.4em 0.8em;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  padding: 0.05em 0.1em 0.2em;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+#drone-btn:hover {
+  color: #d8d8ff;
+  border-bottom-color: #d8d8ff;
 }
 
 #drone-btn.on {
-  border-color: #c8743c;
   color: #f0b48a;
+  border-bottom-color: #c8743c;
 }
 
 .drone-fifth {
   display: inline-flex;
   align-items: center;
   gap: 0.45em;
-  font-size: 1rem;
-  color: #bbb;
+  font-size: inherit;
+  color: inherit;
   cursor: pointer;
   user-select: none;
 }
@@ -212,11 +234,11 @@ a {
 .drone-vol {
   display: inline-flex;
   align-items: center;
-  gap: 0.45em;
-  font-size: 1rem;
-  color: #bbb;
+  gap: 0.5em;
+  font-size: inherit;
+  color: inherit;
 }
 
 .drone-vol input[type="range"] {
-  width: 6.5em;
+  width: 6em;
 }
