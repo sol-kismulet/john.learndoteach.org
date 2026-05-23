@@ -22,7 +22,9 @@
         { "start": "0:46", "end": "0:59", "label": "first phrase" },
         { "start": "0:59", "end": "1:14", "label": "second phrase" },
         { "start": "1:14", "end": "1:27", "label": "did you…" },
-        { "start": "1:27", "end": "1:36.0", "label": "Ah…" }
+        { "start": "1:27", "end": "1:41", "label": "Ah…" },
+        { "start": "1:41", "end": "1:55" },
+        { "start": "1:55", "end": "6:45" }
       ]
     }
   }
