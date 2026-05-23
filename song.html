@@ -176,8 +176,9 @@
       document.getElementById('scale-dorian')
         .addEventListener('click', () => playScale([0, 2, 3, 5, 7, 9, 10, 12]));
 
-      // A♭ drone (borrowed from mojotrio) — sustained root with optional perfect fifth
-      const DRONE_ROOT_MIDI = 56; // A♭3
+      // drone (borrowed from mojotrio) — sustained root with optional perfect fifth.
+      // Root pitch comes from the song's "drone" field (note name, octave optional);
+      // a missing/null field leaves the drone off.
       const FIFTH_RATIO = 1.5;
       const dronePanel = document.getElementById('drone-panel');
       const droneBtn = document.getElementById('drone-btn');
@@ -186,13 +187,25 @@
       let droneNodes = null;
       let fifthOn = false;
       let droneVolume = parseFloat(volumeInput.value);
+      let droneRootMidi = 56; // A♭3 default
+      let droneLabel = 'A♭';
 
       function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+      // "A♭", "Eb", "G3", "F#4" → MIDI number (octave defaults to 3); null if unparseable
+      function pitchToMidi(name) {
+        const m = String(name).trim().match(/^([A-Ga-g])([#♯b♭]?)(-?\d+)?$/);
+        if (!m) return null;
+        const semis = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 }[m[1].toLowerCase()];
+        const accidental = (m[2] === '#' || m[2] === '♯') ? 1 : (m[2] === 'b' || m[2] === '♭') ? -1 : 0;
+        const octave = m[3] !== undefined ? parseInt(m[3], 10) : 3;
+        return semis + accidental + (octave + 1) * 12;
+      }
 
       function startDrone() {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         if (ctx.state === 'suspended') ctx.resume();
-        const root = midiToFreq(DRONE_ROOT_MIDI);
+        const root = midiToFreq(droneRootMidi);
 
         const rootOsc = ctx.createOscillator();
         const fifthOsc = ctx.createOscillator();
@@ -248,7 +261,7 @@
         [rootOsc, fifthOsc, noise].forEach(o => { try { o.stop(now + 0.25); } catch (e) {} });
         setTimeout(() => { try { ctx.close(); } catch (e) {} }, 400);
         droneNodes = null;
-        droneBtn.textContent = 'A♭';
+        droneBtn.textContent = droneLabel;
         droneBtn.classList.remove('on');
       }
 
@@ -511,7 +524,11 @@
             document.getElementById('scale-tools').style.display = 'flex';
           }
 
-          if (song.drone) {
+          const droneMidi = song.drone != null ? pitchToMidi(song.drone) : null;
+          if (droneMidi !== null) {
+            droneRootMidi = droneMidi;
+            droneLabel = String(song.drone);
+            droneBtn.textContent = droneLabel;
             dronePanel.classList.add('active');
           }
 
