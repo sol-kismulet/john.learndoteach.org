@@ -16,6 +16,7 @@
       "title": "earth song",
       "videoId": "XAi3VTSdTxU",
       "fineTune": true,
+      "scales": true,
       "loops": [
         { "start": "0:00", "end": "0:33", "label": "preface" },
         { "start": "0:33", "end": "0:46", "label": "call intro" },
