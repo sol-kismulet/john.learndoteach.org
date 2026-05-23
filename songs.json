@@ -17,7 +17,9 @@
       "videoId": "XAi3VTSdTxU",
       "fineTune": true,
       "loops": [
-        { "start": "0:00", "end": "1:00" }
+        { "start": "0:00", "end": "0:33", "label": "preface" },
+        { "start": "0:33", "end": "0:46", "label": "call intro" },
+        { "start": "0:46", "end": "0:59", "label": "first phrase" }
       ]
     }
   }
