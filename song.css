@@ -130,3 +130,81 @@ input[type="range"] {
 a {
   color: #9cd8ff;
 }
+
+#drone-panel {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  display: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+#drone-panel.active {
+  display: flex;
+}
+
+#drone-btn {
+  font-size: 1rem;
+  padding: 0.4em 0.8em;
+}
+
+#drone-btn.on {
+  border-color: #c8743c;
+  color: #f0b48a;
+}
+
+.drone-fifth {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  font-size: 1rem;
+  color: #bbb;
+  cursor: pointer;
+  user-select: none;
+}
+
+.drone-fifth input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.drone-fifth .track {
+  width: 2.4em;
+  height: 1.2em;
+  border: 1px solid #666;
+  border-radius: 1em;
+  position: relative;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.drone-fifth .thumb {
+  position: absolute;
+  top: 50%;
+  left: 0.15em;
+  width: 0.9em;
+  height: 0.9em;
+  transform: translateY(-50%);
+  background: #ddd;
+  border-radius: 50%;
+  transition: left 0.15s, background 0.15s;
+}
+
+.drone-fifth input:checked + .track {
+  background: #7a4322;
+  border-color: #c8743c;
+}
+
+.drone-fifth input:checked + .track .thumb {
+  left: calc(100% - 1.05em);
+  background: #f0b48a;
+}
+
+.drone-fifth input:focus-visible + .track {
+  outline: 2px solid #9cd8ff;
+  outline-offset: 2px;
+}

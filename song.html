@@ -64,6 +64,15 @@
 <body>
   <a class="back" href="index.html">← back</a>
 
+  <div id="drone-panel">
+    <button id="drone-btn" type="button">A♭ drone</button>
+    <label class="drone-fifth">
+      <input id="drone-fifth" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      add 5th
+    </label>
+  </div>
+
   <div class="title">
     <span id="song-title">loading…</span>
     <img src="feather.svg" alt="" class="feather">
@@ -161,6 +170,88 @@
         .addEventListener('click', () => playScale([0, 2, 3, 5, 7, 8, 10, 12]));
       document.getElementById('scale-dorian')
         .addEventListener('click', () => playScale([0, 2, 3, 5, 7, 9, 10, 12]));
+
+      // A♭ drone (borrowed from mojotrio) — sustained root with optional perfect fifth
+      const DRONE_ROOT_MIDI = 56; // A♭3
+      const FIFTH_RATIO = 1.5;
+      const dronePanel = document.getElementById('drone-panel');
+      const droneBtn = document.getElementById('drone-btn');
+      const fifthToggle = document.getElementById('drone-fifth');
+      let droneNodes = null;
+      let fifthOn = false;
+
+      function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+      function startDrone() {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (ctx.state === 'suspended') ctx.resume();
+        const root = midiToFreq(DRONE_ROOT_MIDI);
+
+        const rootOsc = ctx.createOscillator();
+        const fifthOsc = ctx.createOscillator();
+        const fifthGain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+        const fA = ctx.createBiquadFilter();
+        const fB = ctx.createBiquadFilter();
+        const fC = ctx.createBiquadFilter();
+        const gain = ctx.createGain();
+
+        rootOsc.type = 'sawtooth'; rootOsc.frequency.value = root;
+        fifthOsc.type = 'sawtooth'; fifthOsc.frequency.value = root * FIFTH_RATIO;
+        fifthGain.gain.value = fifthOn ? 1 : 0;
+
+        filter.type = 'lowpass'; filter.frequency.value = 5000; filter.Q.value = 0.7;
+        fA.type = 'peaking'; fA.frequency.value = 250; fA.Q.value = 4; fA.gain.value = 8;
+        fB.type = 'peaking'; fB.frequency.value = 450; fB.Q.value = 3; fB.gain.value = 6;
+        fC.type = 'peaking'; fC.frequency.value = 1800; fC.Q.value = 2; fC.gain.value = 5;
+
+        // sub-audible noise prevents Bluetooth codec silence-gating (audible pulsing)
+        const noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+        const nd = noiseBuf.getChannelData(0);
+        for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+        const noise = ctx.createBufferSource();
+        noise.buffer = noiseBuf; noise.loop = true;
+        const noiseFilter = ctx.createBiquadFilter();
+        noiseFilter.type = 'bandpass'; noiseFilter.frequency.value = 2000; noiseFilter.Q.value = 0.6;
+        const noiseGain = ctx.createGain(); noiseGain.gain.value = 0.012;
+
+        rootOsc.connect(filter);
+        fifthOsc.connect(fifthGain); fifthGain.connect(filter);
+        filter.connect(fA); fA.connect(fB); fB.connect(fC); fC.connect(gain);
+        noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(gain);
+        gain.connect(ctx.destination);
+
+        const now = ctx.currentTime;
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.35, now + 0.15);
+
+        rootOsc.start(); fifthOsc.start(); noise.start();
+        droneNodes = { ctx, rootOsc, fifthOsc, fifthGain, noise, gain };
+        droneBtn.textContent = 'stop drone';
+        droneBtn.classList.add('on');
+      }
+
+      function stopDrone() {
+        if (!droneNodes) return;
+        const { ctx, rootOsc, fifthOsc, noise, gain } = droneNodes;
+        const now = ctx.currentTime;
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+        [rootOsc, fifthOsc, noise].forEach(o => { try { o.stop(now + 0.25); } catch (e) {} });
+        setTimeout(() => { try { ctx.close(); } catch (e) {} }, 400);
+        droneNodes = null;
+        droneBtn.textContent = 'A♭ drone';
+        droneBtn.classList.remove('on');
+      }
+
+      droneBtn.addEventListener('click', () => { droneNodes ? stopDrone() : startDrone(); });
+      fifthToggle.addEventListener('change', () => {
+        fifthOn = fifthToggle.checked;
+        if (droneNodes) {
+          droneNodes.fifthGain.gain.setTargetAtTime(fifthOn ? 1 : 0, droneNodes.ctx.currentTime, 0.03);
+        }
+      });
 
       function showScore(src) {
         if (!src) { scoreWrapper.classList.remove('active'); return; }
@@ -405,6 +496,10 @@
 
           if (song.scales) {
             document.getElementById('scale-tools').style.display = 'flex';
+          }
+
+          if (song.drone) {
+            dronePanel.classList.add('active');
           }
 
           // Build loop elements from JSON
