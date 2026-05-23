@@ -11,6 +11,13 @@
         { "start": "0:24.0", "end": "0:30.6", "label": "mm 8-10",  "score": "scores/mm-8-10.svg" },
         { "start": "0:30.6", "end": "0:36.9", "label": "mm 10-12", "score": "scores/mm-10-12.svg" }
       ]
+    },
+    "earth-song": {
+      "title": "earth song",
+      "videoId": "XAi3VTSdTxU",
+      "loops": [
+        { "start": "0:00", "end": "1:00" }
+      ]
     }
   }
 }
