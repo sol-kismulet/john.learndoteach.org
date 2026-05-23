@@ -19,7 +19,8 @@
       "loops": [
         { "start": "0:00", "end": "0:33", "label": "preface" },
         { "start": "0:33", "end": "0:46", "label": "call intro" },
-        { "start": "0:46", "end": "0:59", "label": "first phrase" }
+        { "start": "0:46", "end": "0:59", "label": "first phrase" },
+        { "start": "0:59", "end": "1:20", "label": "second phrase" }
       ]
     }
   }
