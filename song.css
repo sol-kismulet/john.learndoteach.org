@@ -208,3 +208,15 @@ a {
   outline: 2px solid #9cd8ff;
   outline-offset: 2px;
 }
+
+.drone-vol {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  font-size: 1rem;
+  color: #bbb;
+}
+
+.drone-vol input[type="range"] {
+  width: 6.5em;
+}
