@@ -30,6 +30,14 @@ function sigLabel(n) {
   return Math.abs(n) + (n > 0 ? '♯' : '♭');
 }
 
+// Key-signature engraving. Accidentals appear in a fixed order at fixed staff
+// positions. Position units: 1 per line/space, 0 = bottom staff line, higher =
+// higher pitch. Values below are for treble clef; bass clef is shifted down 2.
+const SHARP_ORDER = ['F', 'C', 'G', 'D', 'A', 'E', 'B'];
+const FLAT_ORDER = ['B', 'E', 'A', 'D', 'G', 'C', 'F'];
+const SHARP_POS_TREBLE = [8, 5, 9, 6, 3, 7, 4];
+const FLAT_POS_TREBLE = [4, 7, 3, 6, 2, 5, 1];
+
 // Semitone offsets from the tonic, including the octave.
 // basic: shown when "show modes" is off (with the friendlier basicName).
 // descIntervals: distinct descending form (melodic minor goes up raised,
@@ -215,6 +223,53 @@ function select(i) {
   droneRootMidi = pitchToMidi(CIRCLE[i].root, 3);
   retuneDrone();
   buildModes();
+  renderKeySig();
+}
+
+// Draws the selected key's signature on a staff, in bass or treble clef.
+function renderKeySig() {
+  const svg = document.getElementById('keysig');
+  if (!svg) return;
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  const treble = document.getElementById('toggle-treble').checked;
+  const sig = CIRCLE[selectedIndex].sig;
+  const stepY = 8, lineGap = 16, topY = 42, baseY = topY + 4 * lineGap;
+  const x0 = 6, x1 = 162;
+  const posY = (pos) => baseY - pos * stepY;
+
+  for (let i = 0; i < 5; i++) {
+    const ln = document.createElementNS(NS, 'line');
+    ln.setAttribute('class', 'staff-line');
+    ln.setAttribute('x1', x0); ln.setAttribute('x2', x1);
+    ln.setAttribute('y1', topY + i * lineGap); ln.setAttribute('y2', topY + i * lineGap);
+    svg.appendChild(ln);
+  }
+
+  const clef = document.createElementNS(NS, 'text');
+  clef.setAttribute('class', 'clef');
+  clef.setAttribute('x', 10);
+  clef.setAttribute('y', treble ? baseY - 4 : baseY - 40);
+  clef.setAttribute('font-size', treble ? 72 : 52);
+  clef.textContent = treble ? '\u{1D11E}' : '\u{1D122}';
+  svg.appendChild(clef);
+
+  const sharps = sig > 0;
+  const count = Math.abs(sig);
+  const posArr = sharps ? SHARP_POS_TREBLE : FLAT_POS_TREBLE;
+  const glyph = sharps ? '♯' : '♭';
+  const startX = 50, spacing = 14;
+  for (let i = 0; i < count; i++) {
+    const pos = posArr[i] - (treble ? 0 : 2);
+    const t = document.createElementNS(NS, 'text');
+    t.setAttribute('class', 'accidental');
+    t.setAttribute('x', startX + i * spacing);
+    t.setAttribute('y', posY(pos));
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('dominant-baseline', 'central');
+    t.textContent = glyph;
+    svg.appendChild(t);
+  }
 }
 
 function buildModes() {
@@ -284,6 +339,16 @@ function initViewToggles() {
     showModes = modes.checked;
     buildModes();
   });
+
+  const keysig = document.getElementById('toggle-keysig');
+  const clefToggle = document.getElementById('clef-toggle');
+  const staff = document.getElementById('keysig');
+  keysig.addEventListener('change', () => {
+    staff.classList.toggle('active', keysig.checked);
+    clefToggle.style.display = keysig.checked ? 'inline-flex' : 'none';
+    renderKeySig();
+  });
+  document.getElementById('toggle-treble').addEventListener('change', renderKeySig);
 }
 
 buildCircle();

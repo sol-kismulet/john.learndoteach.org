@@ -91,6 +91,17 @@
       color: rgba(255, 255, 255, 0.55);
       z-index: 10;
     }
+    #clef-toggle { display: none; }
+
+    #keysig {
+      display: none;
+      width: min(220px, 70vw);
+      height: auto;
+    }
+    #keysig.active { display: block; }
+    .staff-line { stroke: rgba(255, 255, 255, 0.55); stroke-width: 1; }
+    .clef { fill: #eee; font-family: serif; }
+    .accidental { fill: #9cd8ff; font-size: 22px; font-family: serif; }
 
     .center {
       font-size: 1.4rem;
@@ -197,6 +208,16 @@
       <span class="track"><span class="thumb"></span></span>
       show modes
     </label>
+    <label class="switch">
+      <input id="toggle-keysig" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      show key signatures
+    </label>
+    <label class="switch" id="clef-toggle">
+      <input id="toggle-treble" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      treble clef
+    </label>
   </div>
 
   <h1>scales</h1>
@@ -205,6 +226,8 @@
   <svg id="circle" viewBox="0 0 360 360" aria-label="circle of fifths"></svg>
 
   <div class="center">tonal center: <span id="center-label">—</span></div>
+
+  <svg id="keysig" viewBox="0 0 170 150" aria-label="key signature"></svg>
 
   <div class="drone">
     <button id="drone-btn" type="button">drone</button>
