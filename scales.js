@@ -64,6 +64,16 @@ const { pitchToMidi } = AudioKit;
 let autoDescend = false;
 let tempoBpm = 120;
 let articulation = 'legato';
+let loopOn = false;
+
+// Note value per beat: how many scale notes fit in one quarter-note beat.
+let subdivIndex = 0;
+const SUBDIVS = [
+  { label: '♩', name: 'quarter',   perBeat: 1 },
+  { label: '♪', name: 'eighth',    perBeat: 2 },
+  { label: '♪³', name: 'triplet',  perBeat: 3 },
+  { label: '♬', name: 'sixteenth', perBeat: 4 },
+];
 
 // gate = fraction of the beat the note sounds; sustain = held level (0 = plucked,
 // for staccato); atk/release = envelope edges. Tuned so legato actually connects.
@@ -96,7 +106,7 @@ const seqUpDown = (mode) => {
 };
 
 function playSequence(baseMidi, seq, rowReadout) {
-  const step = 60 / tempoBpm;
+  const step = (60 / tempoBpm) / SUBDIVS[subdivIndex].perBeat;
   const art = ARTIC[articulation] || ARTIC.legato;
   const preferFlats = CIRCLE[selectedIndex].sig < 0;
   const center = document.getElementById('playing-note');
@@ -117,6 +127,7 @@ function playSequence(baseMidi, seq, rowReadout) {
     onEnd: () => {
       if (center) center.textContent = '';
       if (rowReadout) rowReadout.textContent = '';
+      if (loopOn) playSequence(baseMidi, seq, rowReadout);
     },
   });
 }
@@ -328,6 +339,23 @@ function initScaleOptions() {
     const v = parseInt(tempo.value, 10);
     if (Number.isFinite(v) && v > 0) tempoBpm = v;
   });
+
+  const subdiv = document.getElementById('subdiv');
+  const subdivVal = document.getElementById('subdiv-val');
+  const showSubdiv = () => {
+    const s = SUBDIVS[subdivIndex];
+    subdivVal.textContent = `${s.label} ${s.name}`;
+  };
+  subdivIndex = parseInt(subdiv.value, 10);
+  showSubdiv();
+  subdiv.addEventListener('input', () => {
+    subdivIndex = parseInt(subdiv.value, 10);
+    showSubdiv();
+  });
+
+  const loop = document.getElementById('loop');
+  loopOn = loop.checked;
+  loop.addEventListener('change', () => { loopOn = loop.checked; });
 
   const artic = document.getElementById('articulation');
   articulation = artic.value;
