@@ -64,6 +64,16 @@ const { pitchToMidi } = AudioKit;
 let autoDescend = false;
 let tempoBpm = 120;
 let articulation = 'legato';
+let loopOn = false;
+
+// Note value per beat: how many scale notes fit in one quarter-note beat.
+let subdivIndex = 0;
+const SUBDIVS = [
+  { label: '♩', name: 'quarter',   perBeat: 1 },
+  { label: '♪', name: 'eighth',    perBeat: 2 },
+  { label: '♪³', name: 'triplet',  perBeat: 3 },
+  { label: '♬', name: 'sixteenth', perBeat: 4 },
+];
 
 // gate = fraction of the beat the note sounds; sustain = held level (0 = plucked,
 // for staccato); atk/release = envelope edges. Tuned so legato actually connects.
@@ -95,19 +105,30 @@ const seqUpDown = (mode) => {
   return up.concat(down.slice(0, -1).reverse());
 };
 
-function playSequence(baseMidi, seq) {
-  const step = 60 / tempoBpm;
+function playSequence(baseMidi, seq, rowReadout) {
+  const step = (60 / tempoBpm) / SUBDIVS[subdivIndex].perBeat;
   const art = ARTIC[articulation] || ARTIC.legato;
   const preferFlats = CIRCLE[selectedIndex].sig < 0;
-  const readout = document.getElementById('playing-note');
+  const center = document.getElementById('playing-note');
+  // clear the center and any row readouts left over from a previous run
+  if (center) center.textContent = '';
+  document.querySelectorAll('.note-readout').forEach(el => { el.textContent = ''; });
   AudioKit.playSequence(baseMidi, seq, {
     step,
     gate: step * art.gate,
     attack: art.atk,
     sustain: art.sustain,
     release: art.release,
-    onNote: (semi) => { if (readout) readout.textContent = AudioKit.midiToName(baseMidi + semi, preferFlats); },
-    onEnd: () => { if (readout) readout.textContent = ''; },
+    onNote: (semi) => {
+      const name = AudioKit.midiToName(baseMidi + semi, preferFlats);
+      if (center) center.textContent = name;
+      if (rowReadout) rowReadout.textContent = name;
+    },
+    onEnd: () => {
+      if (center) center.textContent = '';
+      if (rowReadout) rowReadout.textContent = '';
+      if (loopOn) playSequence(baseMidi, seq, rowReadout);
+    },
   });
 }
 
@@ -259,16 +280,19 @@ function buildModes() {
     name.className = 'mode-name';
     const display = mode.basicName || mode.name;
     name.textContent = `${label} ${display}`;
+    // Per-row note readout, in case the circle is scrolled off-screen.
+    const readout = document.createElement('span');
+    readout.className = 'note-readout';
     const asc = document.createElement('button');
     asc.type = 'button';
     asc.textContent = autoDescend ? '▲▼ up + down' : '▲ ascending';
     asc.addEventListener('click', () =>
-      playSequence(base, autoDescend ? seqUpDown(mode) : seqAsc(mode)));
+      playSequence(base, autoDescend ? seqUpDown(mode) : seqAsc(mode), readout));
     const desc = document.createElement('button');
     desc.type = 'button';
     desc.textContent = '▼ descending';
-    desc.addEventListener('click', () => playSequence(base, seqDesc(mode)));
-    row.append(name, asc, desc);
+    desc.addEventListener('click', () => playSequence(base, seqDesc(mode), readout));
+    row.append(name, readout, asc, desc);
     wrap.appendChild(row);
   });
 }
@@ -315,6 +339,23 @@ function initScaleOptions() {
     const v = parseInt(tempo.value, 10);
     if (Number.isFinite(v) && v > 0) tempoBpm = v;
   });
+
+  const subdiv = document.getElementById('subdiv');
+  const subdivVal = document.getElementById('subdiv-val');
+  const showSubdiv = () => {
+    const s = SUBDIVS[subdivIndex];
+    subdivVal.textContent = `${s.label} ${s.name}`;
+  };
+  subdivIndex = parseInt(subdiv.value, 10);
+  showSubdiv();
+  subdiv.addEventListener('input', () => {
+    subdivIndex = parseInt(subdiv.value, 10);
+    showSubdiv();
+  });
+
+  const loop = document.getElementById('loop');
+  loopOn = loop.checked;
+  loop.addEventListener('change', () => { loopOn = loop.checked; });
 
   const artic = document.getElementById('articulation');
   articulation = artic.value;

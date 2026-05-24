@@ -138,6 +138,8 @@
     .ctl { display: inline-flex; align-items: center; gap: 0.5em; }
     .ctl input[type="range"] { width: 6em; }
     .ctl-val { min-width: 1ch; color: #9cd8ff; }
+    .subdiv-val { min-width: 5.5em; color: #9cd8ff; }
+    .note-eq { font-size: 1.25rem; color: rgba(255, 255, 255, 0.8); }
     .ctl .unit { opacity: 0.55; }
     .ctl input[type="number"],
     .ctl select {
@@ -177,6 +179,12 @@
     }
     .mode-name {
       flex: 1 1 11rem;
+      font-size: 1.2rem;
+    }
+    .note-readout {
+      min-width: 2.2em;
+      text-align: right;
+      color: #9cd8ff;
       font-size: 1.2rem;
     }
 
@@ -295,9 +303,18 @@
       <span id="octaves-val" class="ctl-val">1</span>
     </label>
     <label class="ctl">
-      tempo
+      <span class="note-eq">&#x2669; =</span>
       <input id="tempo" type="number" min="40" max="300" step="1" value="120">
-      <span class="unit">bpm</span>
+    </label>
+    <label class="ctl">
+      note
+      <input id="subdiv" type="range" min="0" max="3" step="1" value="0">
+      <span id="subdiv-val" class="subdiv-val">&#x2669; quarter</span>
+    </label>
+    <label class="switch">
+      <input id="loop" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      loop
     </label>
     <label class="ctl">
       articulation
