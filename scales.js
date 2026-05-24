@@ -359,16 +359,31 @@ function buildModes() {
     name.append(labelEl, readout);
     const asc = document.createElement('button');
     asc.type = 'button';
-    asc.textContent = autoDescend ? '▲▼ up + down' : '▲ ascending';
+    asc.append(makeArrow(autoDescend ? '▲▼' : '▲'), makeLabel(autoDescend ? 'up + down' : 'ascending'));
     asc.addEventListener('click', () =>
       togglePlay(asc, base, () => (autoDescend ? seqUpDown(mode) : seqAsc(mode)), readout));
     const desc = document.createElement('button');
     desc.type = 'button';
-    desc.textContent = '▼ descending';
+    desc.append(makeArrow('▼'), makeLabel('descending'));
     desc.addEventListener('click', () => togglePlay(desc, base, () => seqDesc(mode), readout));
     row.append(name, asc, desc);
     wrap.appendChild(row);
   });
+}
+
+// Build a play button's parts: the arrow always shows; the word label is hidden
+// on narrow screens (via CSS) so the row fits on one line on mobile.
+function makeArrow(glyph) {
+  const s = document.createElement('span');
+  s.className = 'btn-arrow';
+  s.textContent = glyph;
+  return s;
+}
+function makeLabel(text) {
+  const s = document.createElement('span');
+  s.className = 'btn-label';
+  s.textContent = text;
+  return s;
 }
 
 function initDroneControls() {
