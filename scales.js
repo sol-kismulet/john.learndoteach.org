@@ -9,34 +9,42 @@
 const NS = 'http://www.w3.org/2000/svg';
 
 // Tonal centers clockwise around the circle of fifths, starting at the top.
+// sig = major-key signature: positive = sharps, negative = flats.
 const CIRCLE = [
-  { label: 'C', root: 'C' },
-  { label: 'G', root: 'G' },
-  { label: 'D', root: 'D' },
-  { label: 'A', root: 'A' },
-  { label: 'E', root: 'E' },
-  { label: 'B', root: 'B' },
-  { label: 'G♭', root: 'Gb' },
-  { label: 'D♭', root: 'Db' },
-  { label: 'A♭', root: 'Ab' },
-  { label: 'E♭', root: 'Eb' },
-  { label: 'B♭', root: 'Bb' },
-  { label: 'F', root: 'F' },
+  { label: 'C',  root: 'C',  sig: 0 },
+  { label: 'G',  root: 'G',  sig: 1 },
+  { label: 'D',  root: 'D',  sig: 2 },
+  { label: 'A',  root: 'A',  sig: 3 },
+  { label: 'E',  root: 'E',  sig: 4 },
+  { label: 'B',  root: 'B',  sig: 5 },
+  { label: 'G♭', root: 'Gb', sig: -6 },
+  { label: 'D♭', root: 'Db', sig: -5 },
+  { label: 'A♭', root: 'Ab', sig: -4 },
+  { label: 'E♭', root: 'Eb', sig: -3 },
+  { label: 'B♭', root: 'Bb', sig: -2 },
+  { label: 'F',  root: 'F',  sig: -1 },
 ];
 
+function sigLabel(n) {
+  if (n === 0) return '0';
+  return Math.abs(n) + (n > 0 ? '♯' : '♭');
+}
+
 // Semitone offsets from the tonic, including the octave.
+// basic: shown when "show modes" is off (with the friendlier basicName).
 const MODES = [
-  { name: 'Ionian (major)',          intervals: [0, 2, 4, 5, 7, 9, 11, 12] },
+  { name: 'Ionian (major)',          basicName: 'Major',         basic: true, intervals: [0, 2, 4, 5, 7, 9, 11, 12] },
   { name: 'Dorian',                  intervals: [0, 2, 3, 5, 7, 9, 10, 12] },
   { name: 'Phrygian',                intervals: [0, 1, 3, 5, 7, 8, 10, 12] },
   { name: 'Lydian',                  intervals: [0, 2, 4, 6, 7, 9, 11, 12] },
   { name: 'Mixolydian',              intervals: [0, 2, 4, 5, 7, 9, 10, 12] },
   { name: 'Aeolian (natural minor)', intervals: [0, 2, 3, 5, 7, 8, 10, 12] },
-  { name: 'Harmonic minor',          intervals: [0, 2, 3, 5, 7, 8, 11, 12] },
+  { name: 'Harmonic minor',          basicName: 'Harmonic minor', basic: true, intervals: [0, 2, 3, 5, 7, 8, 11, 12] },
   { name: 'Locrian',                 intervals: [0, 1, 3, 5, 6, 8, 10, 12] },
 ];
 
 let selectedIndex = 0; // default C
+let showModes = false;
 
 function pitchToMidi(name, defaultOctave = 3) {
   const m = String(name).trim().match(/^([A-Ga-g])([#♯b♭]?)(-?\d+)?$/);
@@ -160,16 +168,16 @@ function retuneDrone() {
 // --- UI ---
 function buildCircle() {
   const svg = document.getElementById('circle');
-  const cx = 160, cy = 160, r = 120;
+  const cx = 180, cy = 180, ringR = 118, sigR = 152;
   CIRCLE.forEach((entry, i) => {
     const ang = (-90 + i * 30) * Math.PI / 180;
-    const x = cx + r * Math.cos(ang);
-    const y = cy + r * Math.sin(ang);
+    const x = cx + ringR * Math.cos(ang);
+    const y = cy + ringR * Math.sin(ang);
     const g = document.createElementNS(NS, 'g');
     g.setAttribute('class', 'node');
     g.setAttribute('tabindex', '0');
     g.setAttribute('role', 'button');
-    g.setAttribute('aria-label', entry.label);
+    g.setAttribute('aria-label', `${entry.label}, ${sigLabel(entry.sig)}`);
     const c = document.createElementNS(NS, 'circle');
     c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 24);
     const t = document.createElementNS(NS, 'text');
@@ -177,7 +185,15 @@ function buildCircle() {
     t.setAttribute('text-anchor', 'middle');
     t.setAttribute('dominant-baseline', 'central');
     t.textContent = entry.label;
-    g.append(c, t);
+    // key-signature label just outside the ring (shown via the show-sig toggle)
+    const s = document.createElementNS(NS, 'text');
+    s.setAttribute('class', 'sig');
+    s.setAttribute('x', cx + sigR * Math.cos(ang));
+    s.setAttribute('y', cy + sigR * Math.sin(ang));
+    s.setAttribute('text-anchor', 'middle');
+    s.setAttribute('dominant-baseline', 'central');
+    s.textContent = sigLabel(entry.sig);
+    g.append(c, t, s);
     g.addEventListener('click', () => select(i));
     g.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(i); }
@@ -202,12 +218,14 @@ function buildModes() {
   const base = pitchToMidi(root, 4);
   const wrap = document.getElementById('modes');
   wrap.innerHTML = '';
-  MODES.forEach(mode => {
+  const list = showModes ? MODES : MODES.filter(m => m.basic);
+  list.forEach(mode => {
     const row = document.createElement('div');
     row.className = 'mode-row';
     const name = document.createElement('span');
     name.className = 'mode-name';
-    name.textContent = `${label} ${mode.name}`;
+    const display = (!showModes && mode.basicName) ? mode.basicName : mode.name;
+    name.textContent = `${label} ${display}`;
     const asc = document.createElement('button');
     asc.type = 'button';
     asc.textContent = autoDescend ? '▲▼ up + down' : '▲ ascending';
@@ -251,7 +269,20 @@ function initScaleOptions() {
   });
 }
 
+function initViewToggles() {
+  const svg = document.getElementById('circle');
+  const sig = document.getElementById('toggle-sig');
+  sig.addEventListener('change', () => svg.classList.toggle('show-sig', sig.checked));
+
+  const modes = document.getElementById('toggle-modes');
+  modes.addEventListener('change', () => {
+    showModes = modes.checked;
+    buildModes();
+  });
+}
+
 buildCircle();
 initDroneControls();
 initScaleOptions();
+initViewToggles();
 select(selectedIndex);
