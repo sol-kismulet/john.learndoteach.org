@@ -25,11 +25,27 @@ const AudioKit = (() => {
   // One AudioContext shared across scale playbacks (the drone makes its own).
   let seqCtx = null;
 
-  // Plays a sequence of semitone offsets from baseMidi as triangle tones.
+  // The shared "cello-ish" voice: a sawtooth shaped by a gentle lowpass and
+  // three formant peaks. Connect a source into `input`; take `output`. Used by
+  // both the drone and the scale note player so their timbre stays identical.
+  function celloFilters(ctx) {
+    const lp = ctx.createBiquadFilter();
+    const fA = ctx.createBiquadFilter();
+    const fB = ctx.createBiquadFilter();
+    const fC = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 5000; lp.Q.value = 0.7;
+    fA.type = 'peaking'; fA.frequency.value = 250; fA.Q.value = 4; fA.gain.value = 8;
+    fB.type = 'peaking'; fB.frequency.value = 450; fB.Q.value = 3; fB.gain.value = 6;
+    fC.type = 'peaking'; fC.frequency.value = 1800; fC.Q.value = 2; fC.gain.value = 5;
+    lp.connect(fA); fA.connect(fB); fB.connect(fC);
+    return { input: lp, output: fC };
+  }
+
+  // Plays a sequence of semitone offsets from baseMidi using the cello voice.
   // opts: step (onset spacing, s), gate (sounding length, s), attack (s),
   // peak (gain), sustain (0 = plucked decay over the whole gate; >0 = hold at
   // that fraction of peak until a short release — needed for legato/portato),
-  // release (release length, s). Defaults match the song page's plucked feel.
+  // release (release length, s).
   function playSequence(baseMidi, seq, opts = {}) {
     if (!seqCtx) seqCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (seqCtx.state === 'suspended') seqCtx.resume();
@@ -37,15 +53,16 @@ const AudioKit = (() => {
     const step = opts.step != null ? opts.step : 0.42;
     const gate = Math.max(opts.gate != null ? opts.gate : step * 0.92, 0.04);
     const attack = opts.attack != null ? opts.attack : 0.02;
-    const peak = opts.peak != null ? opts.peak : 0.25;
+    const peak = opts.peak != null ? opts.peak : 0.16;
     const sustain = opts.sustain != null ? opts.sustain : 0;
     const release = opts.release != null ? opts.release : 0.05;
     const start = ctx.currentTime + 0.05;
     seq.forEach((semi, i) => {
       const t = start + i * step;
       const osc = ctx.createOscillator();
+      const voice = celloFilters(ctx);
       const gain = ctx.createGain();
-      osc.type = 'triangle';
+      osc.type = 'sawtooth';
       osc.frequency.value = midiToFreq(baseMidi + semi);
       const atk = Math.min(attack, gate * 0.5);
       gain.gain.setValueAtTime(0.0001, t);
@@ -58,7 +75,8 @@ const AudioKit = (() => {
         gain.gain.setValueAtTime(susLevel, Math.max(decayEnd, t + gate - release));
       }
       gain.gain.exponentialRampToValueAtTime(0.0001, t + gate);
-      osc.connect(gain).connect(ctx.destination);
+      osc.connect(voice.input);
+      voice.output.connect(gain).connect(ctx.destination);
       osc.start(t);
       osc.stop(t + gate + 0.05);
     });
@@ -81,20 +99,12 @@ const AudioKit = (() => {
       const rootOsc = ctx.createOscillator();
       const fifthOsc = ctx.createOscillator();
       const fifthGain = ctx.createGain();
-      const filter = ctx.createBiquadFilter();
-      const fA = ctx.createBiquadFilter();
-      const fB = ctx.createBiquadFilter();
-      const fC = ctx.createBiquadFilter();
+      const voice = celloFilters(ctx);
       const gain = ctx.createGain();
 
       rootOsc.type = 'sawtooth'; rootOsc.frequency.value = root;
       fifthOsc.type = 'sawtooth'; fifthOsc.frequency.value = root * FIFTH_RATIO;
       fifthGain.gain.value = fifthOn ? 1 : 0;
-
-      filter.type = 'lowpass'; filter.frequency.value = 5000; filter.Q.value = 0.7;
-      fA.type = 'peaking'; fA.frequency.value = 250; fA.Q.value = 4; fA.gain.value = 8;
-      fB.type = 'peaking'; fB.frequency.value = 450; fB.Q.value = 3; fB.gain.value = 6;
-      fC.type = 'peaking'; fC.frequency.value = 1800; fC.Q.value = 2; fC.gain.value = 5;
 
       const noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
       const nd = noiseBuf.getChannelData(0);
@@ -105,9 +115,9 @@ const AudioKit = (() => {
       noiseFilter.type = 'bandpass'; noiseFilter.frequency.value = 2000; noiseFilter.Q.value = 0.6;
       const noiseGain = ctx.createGain(); noiseGain.gain.value = 0.012;
 
-      rootOsc.connect(filter);
-      fifthOsc.connect(fifthGain); fifthGain.connect(filter);
-      filter.connect(fA); fA.connect(fB); fB.connect(fC); fC.connect(gain);
+      rootOsc.connect(voice.input);
+      fifthOsc.connect(fifthGain); fifthGain.connect(voice.input);
+      voice.output.connect(gain);
       noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(gain);
       gain.connect(ctx.destination);
 
