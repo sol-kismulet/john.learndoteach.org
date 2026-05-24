@@ -98,12 +98,16 @@ const seqUpDown = (mode) => {
 function playSequence(baseMidi, seq) {
   const step = 60 / tempoBpm;
   const art = ARTIC[articulation] || ARTIC.legato;
+  const preferFlats = CIRCLE[selectedIndex].sig < 0;
+  const readout = document.getElementById('playing-note');
   AudioKit.playSequence(baseMidi, seq, {
     step,
     gate: step * art.gate,
     attack: art.atk,
     sustain: art.sustain,
     release: art.release,
+    onNote: (semi) => { if (readout) readout.textContent = AudioKit.midiToName(baseMidi + semi, preferFlats); },
+    onEnd: () => { if (readout) readout.textContent = ''; },
   });
 }
 
@@ -166,6 +170,15 @@ function buildCircle() {
     svg.appendChild(g);
     entry.el = g;
   });
+
+  // Center readout for the note currently sounding during scale playback.
+  const playing = document.createElementNS(NS, 'text');
+  playing.setAttribute('id', 'playing-note');
+  playing.setAttribute('x', cx);
+  playing.setAttribute('y', cy);
+  playing.setAttribute('text-anchor', 'middle');
+  playing.setAttribute('dominant-baseline', 'central');
+  svg.appendChild(playing);
 }
 
 function select(i) {
