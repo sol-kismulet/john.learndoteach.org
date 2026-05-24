@@ -32,10 +32,11 @@ const MODES = [
   { name: 'Lydian',                  intervals: [0, 2, 4, 6, 7, 9, 11, 12] },
   { name: 'Mixolydian',              intervals: [0, 2, 4, 5, 7, 9, 10, 12] },
   { name: 'Aeolian (natural minor)', intervals: [0, 2, 3, 5, 7, 8, 10, 12] },
+  { name: 'Harmonic minor',          intervals: [0, 2, 3, 5, 7, 8, 11, 12] },
   { name: 'Locrian',                 intervals: [0, 1, 3, 5, 6, 8, 10, 12] },
 ];
 
-let selectedIndex = 8; // default A♭
+let selectedIndex = 0; // default C
 
 function pitchToMidi(name, defaultOctave = 3) {
   const m = String(name).trim().match(/^([A-Ga-g])([#♯b♭]?)(-?\d+)?$/);
@@ -49,11 +50,18 @@ function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 
 // --- scale playback ---
 let audioCtx = null;
-function playScale(baseMidi, intervals, descending) {
+let autoDescend = false;
+
+// Sequence builders (arrays of semitone offsets from the tonic).
+const ascSeq = (iv) => iv;
+const descSeq = (iv) => iv.slice().reverse();
+// up then back down, with the octave as a single turnaround note.
+const upDownSeq = (iv) => iv.concat(iv.slice(0, -1).reverse());
+
+function playSequence(baseMidi, seq) {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
   const ctx = audioCtx;
-  const seq = descending ? intervals.slice().reverse() : intervals;
   const noteDur = 0.38;
   const start = ctx.currentTime + 0.05;
   seq.forEach((semi, i) => {
@@ -202,12 +210,13 @@ function buildModes() {
     name.textContent = `${label} ${mode.name}`;
     const asc = document.createElement('button');
     asc.type = 'button';
-    asc.textContent = '▲ ascending';
-    asc.addEventListener('click', () => playScale(base, mode.intervals, false));
+    asc.textContent = autoDescend ? '▲▼ up + down' : '▲ ascending';
+    asc.addEventListener('click', () =>
+      playSequence(base, autoDescend ? upDownSeq(mode.intervals) : ascSeq(mode.intervals)));
     const desc = document.createElement('button');
     desc.type = 'button';
     desc.textContent = '▼ descending';
-    desc.addEventListener('click', () => playScale(base, mode.intervals, true));
+    desc.addEventListener('click', () => playSequence(base, descSeq(mode.intervals)));
     row.append(name, asc, desc);
     wrap.appendChild(row);
   });
@@ -234,6 +243,15 @@ function initDroneControls() {
   });
 }
 
+function initScaleOptions() {
+  const ad = document.getElementById('auto-descend');
+  ad.addEventListener('change', () => {
+    autoDescend = ad.checked;
+    buildModes();
+  });
+}
+
 buildCircle();
 initDroneControls();
+initScaleOptions();
 select(selectedIndex);
