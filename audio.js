@@ -22,8 +22,19 @@ const AudioKit = (() => {
     return semis + accidental + (octave + 1) * 12;
   }
 
+  const SHARP_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const FLAT_NAMES = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'];
+
+  // MIDI number → pitch-class name. preferFlats picks the accidental spelling.
+  function midiToName(midi, preferFlats) {
+    const pc = ((Math.round(midi) % 12) + 12) % 12;
+    return (preferFlats ? FLAT_NAMES : SHARP_NAMES)[pc];
+  }
+
   // One AudioContext shared across scale playbacks (the drone makes its own).
   let seqCtx = null;
+  // Pending visual-callback timers, cleared when a new sequence starts.
+  let seqTimers = [];
 
   // The shared "cello-ish" voice: a sawtooth shaped by a gentle lowpass and
   // three formant peaks. Connect a source into `input`; take `output`. Used by
@@ -45,7 +56,8 @@ const AudioKit = (() => {
   // opts: step (onset spacing, s), gate (sounding length, s), attack (s),
   // peak (gain), sustain (0 = plucked decay over the whole gate; >0 = hold at
   // that fraction of peak until a short release — needed for legato/portato),
-  // release (release length, s).
+  // release (release length, s), onNote(semi, i) fired as each note sounds,
+  // onEnd() fired after the last note finishes.
   function playSequence(baseMidi, seq, opts = {}) {
     if (!seqCtx) seqCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (seqCtx.state === 'suspended') seqCtx.resume();
@@ -56,7 +68,13 @@ const AudioKit = (() => {
     const peak = opts.peak != null ? opts.peak : 0.16;
     const sustain = opts.sustain != null ? opts.sustain : 0;
     const release = opts.release != null ? opts.release : 0.05;
-    const start = ctx.currentTime + 0.05;
+    const onNote = typeof opts.onNote === 'function' ? opts.onNote : null;
+    const onEnd = typeof opts.onEnd === 'function' ? opts.onEnd : null;
+    // Drop any visual callbacks still pending from a previous sequence.
+    seqTimers.forEach(id => clearTimeout(id));
+    seqTimers = [];
+    const now = ctx.currentTime;
+    const start = now + 0.05;
     seq.forEach((semi, i) => {
       const t = start + i * step;
       const osc = ctx.createOscillator();
@@ -79,7 +97,12 @@ const AudioKit = (() => {
       voice.output.connect(gain).connect(ctx.destination);
       osc.start(t);
       osc.stop(t + gate + 0.05);
+      if (onNote) seqTimers.push(setTimeout(() => onNote(semi, i), Math.max(0, (t - now) * 1000)));
     });
+    if (onEnd) {
+      const endT = start + (seq.length - 1) * step + gate;
+      seqTimers.push(setTimeout(onEnd, Math.max(0, (endT - now) * 1000)));
+    }
   }
 
   // Sustained root with an optional perfect fifth. A sub-audible noise layer
@@ -164,5 +187,5 @@ const AudioKit = (() => {
     };
   }
 
-  return { FIFTH_RATIO, midiToFreq, pitchToMidi, playSequence, createDrone };
+  return { FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName, playSequence, createDrone };
 })();
