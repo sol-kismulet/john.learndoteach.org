@@ -202,6 +202,17 @@
     }
     button:hover { border-color: #9cd8ff; color: #fff; }
     button.playing { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
+    .btn-label { margin-left: 0.4em; }
+
+    /* On phones, keep each scale row on one line: collapse the play buttons to
+       just their arrows so the name + ascending + descending + note all fit. */
+    @media (max-width: 600px) {
+      .mode-row { flex-wrap: nowrap; gap: 0.4rem; }
+      .mode-name { min-width: 0; }
+      .mode-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .mode-row button { padding: 0.35em 0.55em; }
+      .btn-label { display: none; }
+    }
 
     .drone {
       display: flex;
