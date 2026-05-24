@@ -70,6 +70,7 @@ let loopOn = false;
 let repeatEnds = false; // when looping, repeat the turnaround (top/bottom) notes
 let playingButton = null; // the play button whose scale is currently sounding
 let currentPlay = null; // { baseMidi, makeSeq, rowReadout } for re-triggering a loop
+let loopTimerId = null; // pending timer that schedules the next loop pass
 
 // Note value per beat: how many scale notes fit in one quarter-note beat.
 let subdivIndex = 0;
@@ -80,12 +81,13 @@ const SUBDIVS = [
   { label: '♬', name: 'sixteenth', perBeat: 4 },
 ];
 
-// gate = fraction of the beat the note sounds; sustain = held level (0 = plucked,
-// for staccato); atk/release = envelope edges. Tuned so legato actually connects.
+// gate = fraction of the beat the note sounds; sustain = held level; atk/release
+// = envelope edges. A smooth continuum: staccato is gently detached (not clipped),
+// portato sits midway, legato fully connects.
 const ARTIC = {
-  staccato: { gate: 0.32, atk: 0.004, sustain: 0,    release: 0.04 },
-  portato:  { gate: 0.62, atk: 0.010, sustain: 0.55, release: 0.06 },
-  legato:   { gate: 1.0,  atk: 0.025, sustain: 0.9,  release: 0.06 },
+  staccato: { gate: 0.60, atk: 0.008, sustain: 0.50, release: 0.05 },
+  portato:  { gate: 0.80, atk: 0.015, sustain: 0.70, release: 0.06 },
+  legato:   { gate: 1.0,  atk: 0.025, sustain: 0.90, release: 0.06 },
 };
 
 // Expand a one-octave interval set (ending on 12) across `octaves` octaves,
@@ -116,13 +118,20 @@ function clearReadouts() {
   document.querySelectorAll('.note-readout').forEach(el => { el.textContent = ''; });
 }
 
-// Stop whatever scale is sounding and reset the play-button state.
-function stopPlayback() {
-  AudioKit.stopSequence();
+// Reset the play-button/UI state without cancelling audio (lets the last note
+// ring out naturally at the end of a pass).
+function finishPlayback() {
+  if (loopTimerId) { clearTimeout(loopTimerId); loopTimerId = null; }
   if (playingButton) playingButton.classList.remove('playing');
   playingButton = null;
   currentPlay = null;
   clearReadouts();
+}
+
+// User-initiated stop: silence any scheduled notes and reset.
+function stopPlayback() {
+  AudioKit.stopSequence();
+  finishPlayback();
 }
 
 // Click handler for a play button: toggles stop if it's already this button's
@@ -130,50 +139,66 @@ function stopPlayback() {
 function togglePlay(button, baseMidi, makeSeq, rowReadout) {
   if (playingButton === button) { stopPlayback(); return; }
   if (playingButton) playingButton.classList.remove('playing');
+  if (loopTimerId) { clearTimeout(loopTimerId); loopTimerId = null; }
   playingButton = button;
   button.classList.add('playing');
   currentPlay = { baseMidi, makeSeq, rowReadout };
-  runSequence(baseMidi, makeSeq, rowReadout);
+  clearReadouts();
+  schedulePass(baseMidi, makeSeq, rowReadout, null, false);
 }
 
 // Re-trigger the current looping scale so a toggled option takes effect now
 // instead of only after a manual stop/restart.
 function restartIfLooping() {
   if (playingButton && loopOn && currentPlay) {
-    runSequence(currentPlay.baseMidi, currentPlay.makeSeq, currentPlay.rowReadout);
+    if (loopTimerId) { clearTimeout(loopTimerId); loopTimerId = null; }
+    clearReadouts();
+    schedulePass(currentPlay.baseMidi, currentPlay.makeSeq, currentPlay.rowReadout, null, false);
   }
 }
 
-function runSequence(baseMidi, makeSeq, rowReadout) {
+// Play one pass, then either schedule the next pass exactly on the audio clock
+// (gapless loop) or finish. `when` is the absolute start time (null = default
+// lead-in); `chain` keeps the previous pass's tail so the seam is seamless.
+function schedulePass(baseMidi, makeSeq, rowReadout, when, chain) {
   const seq = makeSeq();
   const step = (60 / tempoBpm) / SUBDIVS[subdivIndex].perBeat;
   const art = ARTIC[articulation] || ARTIC.legato;
   const preferFlats = CIRCLE[selectedIndex].sig < 0;
   const center = document.getElementById('playing-note');
-  clearReadouts();
   // When looping without repeating the turnaround, drop a trailing note that
   // duplicates the first (e.g. up-then-down) so the bottom isn't struck twice.
   const noRepeat = loopOn && !repeatEnds && seq.length > 1 && seq[0] === seq[seq.length - 1];
   const toPlay = noRepeat ? seq.slice(0, -1) : seq;
-  AudioKit.playSequence(baseMidi, toPlay, {
+  const nextStart = AudioKit.playSequence(baseMidi, toPlay, {
     step,
     gate: step * art.gate,
     attack: art.atk,
     sustain: art.sustain,
     release: art.release,
+    when,
+    chain,
     onNote: (semi) => {
       const name = AudioKit.midiToName(baseMidi + semi, preferFlats);
       if (center) center.textContent = name;
       if (rowReadout) rowReadout.textContent = name;
     },
-    onEnd: () => {
-      if (loopOn && playingButton) {
-        runSequence(baseMidi, makeSeq, rowReadout); // re-evaluate trim/options each pass
-      } else {
-        stopPlayback();
-      }
-    },
   });
+  if (loopOn) {
+    // Set up the next pass a touch before the seam so its notes are scheduled
+    // ahead of time and the loop stays perfectly continuous.
+    const lead = Math.min(0.1, toPlay.length * step * 0.5);
+    const delay = Math.max(0, (nextStart - lead - AudioKit.currentTime()) * 1000);
+    loopTimerId = setTimeout(() => {
+      if (loopOn && playingButton) {
+        schedulePass(baseMidi, makeSeq, rowReadout, nextStart, true);
+      } else {
+        loopTimerId = setTimeout(finishPlayback, Math.max(0, (nextStart - AudioKit.currentTime()) * 1000));
+      }
+    }, delay);
+  } else {
+    loopTimerId = setTimeout(finishPlayback, Math.max(0, (nextStart - AudioKit.currentTime()) * 1000));
+  }
 }
 
 // --- drone (root + optional fifth), shared engine in audio.js ---

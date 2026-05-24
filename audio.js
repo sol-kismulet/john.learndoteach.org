@@ -74,15 +74,25 @@ const AudioKit = (() => {
     return { input: lp, output: fC };
   }
 
+  // Current audio-clock time (creates the shared context if needed). Lets the
+  // caller schedule contiguous loop passes against the same timeline.
+  function currentTime() {
+    if (!seqCtx) seqCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return seqCtx.currentTime;
+  }
+
   // Plays a sequence of semitone offsets from baseMidi using the cello voice.
   // opts: step (onset spacing, s), gate (sounding length, s), attack (s),
   // peak (gain), sustain (0 = plucked decay over the whole gate; >0 = hold at
   // that fraction of peak until a short release — needed for legato/portato),
   // release (release length, s), onNote(semi, i) fired as each note sounds,
-  // onEnd() fired after the last note finishes.
+  // when (absolute audio-clock start time; default = now + 0.05), chain (true =
+  // keep the previous sequence's voices instead of stopping them, for gapless
+  // looping). Returns the audio-clock time the next contiguous note would start
+  // (= start + seq.length * step), so a loop can schedule the next pass exactly.
   function playSequence(baseMidi, seq, opts = {}) {
     if (!seqCtx) seqCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (seqCtx.state === 'suspended') seqCtx.resume();
+    if (seqCtx.state === 'suspended') { try { seqCtx.resume(); } catch (e) {} }
     const ctx = seqCtx;
     const step = opts.step != null ? opts.step : 0.42;
     const gate = Math.max(opts.gate != null ? opts.gate : step * 0.92, 0.04);
@@ -91,11 +101,10 @@ const AudioKit = (() => {
     const sustain = opts.sustain != null ? opts.sustain : 0;
     const release = opts.release != null ? opts.release : 0.05;
     const onNote = typeof opts.onNote === 'function' ? opts.onNote : null;
-    const onEnd = typeof opts.onEnd === 'function' ? opts.onEnd : null;
-    // Never layer a second scale over the first: stop whatever's playing.
-    stopSequence();
+    // Never layer a second scale over the first, unless chaining a loop pass.
+    if (!opts.chain) stopSequence();
     const now = ctx.currentTime;
-    const start = now + 0.05;
+    const start = opts.when != null ? Math.max(opts.when, now) : now + 0.05;
     seq.forEach((semi, i) => {
       const t = start + i * step;
       const osc = ctx.createOscillator();
@@ -118,13 +127,18 @@ const AudioKit = (() => {
       voice.output.connect(gain).connect(ctx.destination);
       osc.start(t);
       osc.stop(t + gate + 0.05);
-      activeVoices.push({ osc, gain });
-      if (onNote) seqTimers.push(setTimeout(() => onNote(semi, i), Math.max(0, (t - now) * 1000)));
+      const rec = { osc, gain };
+      activeVoices.push(rec);
+      osc.onended = () => { const k = activeVoices.indexOf(rec); if (k >= 0) activeVoices.splice(k, 1); };
+      if (onNote) {
+        const id = setTimeout(() => {
+          const k = seqTimers.indexOf(id); if (k >= 0) seqTimers.splice(k, 1);
+          onNote(semi, i);
+        }, Math.max(0, (t - now) * 1000));
+        seqTimers.push(id);
+      }
     });
-    if (onEnd) {
-      const endT = start + (seq.length - 1) * step + gate;
-      seqTimers.push(setTimeout(onEnd, Math.max(0, (endT - now) * 1000)));
-    }
+    return start + seq.length * step;
   }
 
   // Sustained root with an optional perfect fifth. A sub-audible noise layer
@@ -209,5 +223,5 @@ const AudioKit = (() => {
     };
   }
 
-  return { FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName, playSequence, stopSequence, createDrone };
+  return { FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName, playSequence, stopSequence, currentTime, createDrone };
 })();
