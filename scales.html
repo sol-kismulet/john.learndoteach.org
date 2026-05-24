@@ -69,6 +69,28 @@
     .node:focus-visible circle { stroke: #9cd8ff; stroke-width: 2.5; }
     .node.selected circle { fill: #9cd8ff; stroke: #9cd8ff; }
     .node.selected text { fill: #06121c; }
+    .node.selected .sig { fill: #9cd8ff; }
+
+    .node .sig {
+      fill: rgba(255, 255, 255, 0.5);
+      font-size: 13px;
+      font-weight: 400;
+      display: none;
+    }
+    #circle.show-sig .node .sig { display: block; }
+
+    #view-toggles {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.55);
+      z-index: 10;
+    }
 
     .center {
       font-size: 1.4rem;
@@ -164,10 +186,23 @@
 <body>
   <a class="back" href="index.html">← back</a>
 
+  <div id="view-toggles">
+    <label class="switch">
+      <input id="toggle-sig" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      show sharps &amp; flats
+    </label>
+    <label class="switch">
+      <input id="toggle-modes" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      show modes
+    </label>
+  </div>
+
   <h1>scales</h1>
   <p class="hint">pick a tonal center on the circle of fifths, then play each mode up or down</p>
 
-  <svg id="circle" viewBox="0 0 320 320" aria-label="circle of fifths"></svg>
+  <svg id="circle" viewBox="0 0 360 360" aria-label="circle of fifths"></svg>
 
   <div class="center">tonal center: <span id="center-label">—</span></div>
 
