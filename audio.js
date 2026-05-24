@@ -33,8 +33,30 @@ const AudioKit = (() => {
 
   // One AudioContext shared across scale playbacks (the drone makes its own).
   let seqCtx = null;
-  // Pending visual-callback timers, cleared when a new sequence starts.
+  // Pending visual-callback timers, cleared when a sequence is stopped/replaced.
   let seqTimers = [];
+  // Oscillators currently scheduled, so a new (or stopped) sequence can silence
+  // them instead of layering a second scale on top of the first.
+  let activeVoices = [];
+
+  // Stop the current scale: cancel pending visual callbacks and fade out any
+  // scheduled oscillators. Safe to call when nothing is playing.
+  function stopSequence() {
+    seqTimers.forEach(id => clearTimeout(id));
+    seqTimers = [];
+    if (seqCtx) {
+      const now = seqCtx.currentTime;
+      activeVoices.forEach(({ osc, gain }) => {
+        try {
+          gain.gain.cancelScheduledValues(now);
+          gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+          osc.stop(now + 0.06);
+        } catch (e) {}
+      });
+    }
+    activeVoices = [];
+  }
 
   // The shared "cello-ish" voice: a sawtooth shaped by a gentle lowpass and
   // three formant peaks. Connect a source into `input`; take `output`. Used by
@@ -70,9 +92,8 @@ const AudioKit = (() => {
     const release = opts.release != null ? opts.release : 0.05;
     const onNote = typeof opts.onNote === 'function' ? opts.onNote : null;
     const onEnd = typeof opts.onEnd === 'function' ? opts.onEnd : null;
-    // Drop any visual callbacks still pending from a previous sequence.
-    seqTimers.forEach(id => clearTimeout(id));
-    seqTimers = [];
+    // Never layer a second scale over the first: stop whatever's playing.
+    stopSequence();
     const now = ctx.currentTime;
     const start = now + 0.05;
     seq.forEach((semi, i) => {
@@ -97,6 +118,7 @@ const AudioKit = (() => {
       voice.output.connect(gain).connect(ctx.destination);
       osc.start(t);
       osc.stop(t + gate + 0.05);
+      activeVoices.push({ osc, gain });
       if (onNote) seqTimers.push(setTimeout(() => onNote(semi, i), Math.max(0, (t - now) * 1000)));
     });
     if (onEnd) {
@@ -187,5 +209,5 @@ const AudioKit = (() => {
     };
   }
 
-  return { FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName, playSequence, createDrone };
+  return { FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName, playSequence, stopSequence, createDrone };
 })();

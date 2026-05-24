@@ -179,13 +179,16 @@
     }
     .mode-name {
       flex: 1 1 11rem;
+      min-width: 0;
       font-size: 1.2rem;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.6em;
     }
     .note-readout {
-      min-width: 2.2em;
-      text-align: right;
+      flex: 0 0 auto;
       color: #9cd8ff;
-      font-size: 1.2rem;
     }
 
     button {
@@ -198,6 +201,7 @@
       cursor: pointer;
     }
     button:hover { border-color: #9cd8ff; color: #fff; }
+    button.playing { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
 
     .drone {
       display: flex;
@@ -315,6 +319,11 @@
       <input id="loop" type="checkbox">
       <span class="track"><span class="thumb"></span></span>
       loop
+    </label>
+    <label class="switch">
+      <input id="repeat-ends" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      repeat top &amp; bottom
     </label>
     <label class="ctl">
       articulation

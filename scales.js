@@ -48,6 +48,8 @@ const MODES = [
   { name: 'Lydian',                  group: 'mode',  intervals: [0, 2, 4, 6, 7, 9, 11, 12] },
   { name: 'Mixolydian',              group: 'mode',  intervals: [0, 2, 4, 5, 7, 9, 10, 12] },
   { name: 'Locrian',                 group: 'mode',  intervals: [0, 1, 3, 5, 6, 8, 10, 12] },
+  { name: 'Major pentatonic',        group: 'other', intervals: [0, 2, 4, 7, 9, 12] },
+  { name: 'Minor pentatonic',        group: 'other', intervals: [0, 3, 5, 7, 10, 12] },
   { name: 'Whole tone',              group: 'other', intervals: [0, 2, 4, 6, 8, 10, 12] },
   { name: 'Chromatic',               group: 'other', intervals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
 ];
@@ -65,6 +67,8 @@ let autoDescend = false;
 let tempoBpm = 120;
 let articulation = 'legato';
 let loopOn = false;
+let repeatEnds = false; // when looping, repeat the turnaround (top/bottom) notes
+let playingButton = null; // the play button whose scale is currently sounding
 
 // Note value per beat: how many scale notes fit in one quarter-note beat.
 let subdivIndex = 0;
@@ -105,15 +109,42 @@ const seqUpDown = (mode) => {
   return up.concat(down.slice(0, -1).reverse());
 };
 
-function playSequence(baseMidi, seq, rowReadout) {
+function clearReadouts() {
+  const center = document.getElementById('playing-note');
+  if (center) center.textContent = '';
+  document.querySelectorAll('.note-readout').forEach(el => { el.textContent = ''; });
+}
+
+// Stop whatever scale is sounding and reset the play-button state.
+function stopPlayback() {
+  AudioKit.stopSequence();
+  if (playingButton) playingButton.classList.remove('playing');
+  playingButton = null;
+  clearReadouts();
+}
+
+// Click handler for a play button: toggles stop if it's already this button's
+// scale, otherwise switches to the new scale (never stacks two at once).
+function togglePlay(button, baseMidi, makeSeq, rowReadout) {
+  if (playingButton === button) { stopPlayback(); return; }
+  if (playingButton) playingButton.classList.remove('playing');
+  playingButton = button;
+  button.classList.add('playing');
+  runSequence(baseMidi, makeSeq, rowReadout);
+}
+
+function runSequence(baseMidi, makeSeq, rowReadout) {
+  const seq = makeSeq();
   const step = (60 / tempoBpm) / SUBDIVS[subdivIndex].perBeat;
   const art = ARTIC[articulation] || ARTIC.legato;
   const preferFlats = CIRCLE[selectedIndex].sig < 0;
   const center = document.getElementById('playing-note');
-  // clear the center and any row readouts left over from a previous run
-  if (center) center.textContent = '';
-  document.querySelectorAll('.note-readout').forEach(el => { el.textContent = ''; });
-  AudioKit.playSequence(baseMidi, seq, {
+  clearReadouts();
+  // When looping without repeating the turnaround, drop a trailing note that
+  // duplicates the first (e.g. up-then-down) so the bottom isn't struck twice.
+  const noRepeat = loopOn && !repeatEnds && seq.length > 1 && seq[0] === seq[seq.length - 1];
+  const toPlay = noRepeat ? seq.slice(0, -1) : seq;
+  AudioKit.playSequence(baseMidi, toPlay, {
     step,
     gate: step * art.gate,
     attack: art.atk,
@@ -125,9 +156,11 @@ function playSequence(baseMidi, seq, rowReadout) {
       if (rowReadout) rowReadout.textContent = name;
     },
     onEnd: () => {
-      if (center) center.textContent = '';
-      if (rowReadout) rowReadout.textContent = '';
-      if (loopOn) playSequence(baseMidi, seq, rowReadout);
+      if (loopOn && playingButton) {
+        runSequence(baseMidi, makeSeq, rowReadout); // re-evaluate trim/options each pass
+      } else {
+        stopPlayback();
+      }
     },
   });
 }
@@ -259,6 +292,7 @@ function renderKeySig() {
 }
 
 function buildModes() {
+  stopPlayback(); // rebuilding replaces the buttons; don't leave an orphan scale
   const root = CIRCLE[selectedIndex].root;
   const label = CIRCLE[selectedIndex].label;
   const base = pitchToMidi(root, 4);
@@ -278,21 +312,25 @@ function buildModes() {
     row.className = 'mode-row';
     const name = document.createElement('span');
     name.className = 'mode-name';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'mode-label';
     const display = mode.basicName || mode.name;
-    name.textContent = `${label} ${display}`;
-    // Per-row note readout, in case the circle is scrolled off-screen.
+    labelEl.textContent = `${label} ${display}`;
+    // Per-row note readout, shown in the empty space before the button so the
+    // sounding note stays visible when the circle is scrolled off-screen.
     const readout = document.createElement('span');
     readout.className = 'note-readout';
+    name.append(labelEl, readout);
     const asc = document.createElement('button');
     asc.type = 'button';
     asc.textContent = autoDescend ? '▲▼ up + down' : '▲ ascending';
     asc.addEventListener('click', () =>
-      playSequence(base, autoDescend ? seqUpDown(mode) : seqAsc(mode), readout));
+      togglePlay(asc, base, () => (autoDescend ? seqUpDown(mode) : seqAsc(mode)), readout));
     const desc = document.createElement('button');
     desc.type = 'button';
     desc.textContent = '▼ descending';
-    desc.addEventListener('click', () => playSequence(base, seqDesc(mode), readout));
-    row.append(name, readout, asc, desc);
+    desc.addEventListener('click', () => togglePlay(desc, base, () => seqDesc(mode), readout));
+    row.append(name, asc, desc);
     wrap.appendChild(row);
   });
 }
@@ -356,6 +394,10 @@ function initScaleOptions() {
   const loop = document.getElementById('loop');
   loopOn = loop.checked;
   loop.addEventListener('change', () => { loopOn = loop.checked; });
+
+  const repeat = document.getElementById('repeat-ends');
+  repeatEnds = repeat.checked;
+  repeat.addEventListener('change', () => { repeatEnds = repeat.checked; });
 
   const artic = document.getElementById('articulation');
   articulation = artic.value;
