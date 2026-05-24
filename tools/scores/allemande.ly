@@ -13,7 +13,7 @@ allemande = \context Staff \relative c {
 
   \repeat volta 2 {
     \partial 16 b'16 |
-    <b d, g,>4~ b16 a( g fis) g( d e fis) g( a b c) |
+    \once \set fingeringOrientations = #'(down) <b d, g,-4>4\f~ b16 a( g fis) g( d e fis) g( a b c) |
     d( b g fis) g( e d c) b( c d e) fis( g a b) |
     c( a g fis) g( e fis g) a,( d fis g) a( b c a) |
     b( g) g( d) d( b) b( g) g8.\downbow b'16\downbow c\upbow( b a g) |
