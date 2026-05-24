@@ -159,7 +159,7 @@ a {
   border: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 0;
-  color: red; /* TEMP deploy marker — revert to rgba(255, 255, 255, 0.6) */
+  color: rgba(255, 255, 255, 0.6);
   font-size: 0.85rem;
   font-style: italic;
   letter-spacing: 0.06em;

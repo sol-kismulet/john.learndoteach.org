@@ -24,18 +24,7 @@ const MODES = {
   locrian: [0, 1, 3, 5, 6, 8, 10, 12],
 };
 
-function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
-
-// "A♭", "Eb", "G3", "F#4" → MIDI number; null if unparseable.
-// Octave is optional and falls back to defaultOctave.
-function pitchToMidi(name, defaultOctave = 3) {
-  const m = String(name).trim().match(/^([A-Ga-g])([#♯b♭]?)(-?\d+)?$/);
-  if (!m) return null;
-  const semis = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 }[m[1].toLowerCase()];
-  const accidental = (m[2] === '#' || m[2] === '♯') ? 1 : (m[2] === 'b' || m[2] === '♭') ? -1 : 0;
-  const octave = m[3] !== undefined ? parseInt(m[3], 10) : defaultOctave;
-  return semis + accidental + (octave + 1) * 12;
-}
+const { pitchToMidi } = AudioKit;
 
 function init(slug) {
   let player;
@@ -60,28 +49,6 @@ function init(slug) {
   const scoreImg = document.getElementById('score-img');
 
   // --- Scale buttons (data-driven via the song's "scales" field) ---
-  let audioCtx = null;
-  function playScale(baseMidi, semitoneOffsets) {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const ctx = audioCtx;
-    if (ctx.state === 'suspended') ctx.resume();
-    const noteDur = 0.42;
-    const start = ctx.currentTime + 0.05;
-    semitoneOffsets.forEach((semi, i) => {
-      const t = start + i * noteDur;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.value = midiToFreq(baseMidi + semi);
-      gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.linearRampToValueAtTime(0.25, t + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + noteDur * 0.92);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + noteDur);
-    });
-  }
-
   function setupScales(scales) {
     const container = document.getElementById('scale-tools');
     const root = scales.root || 'A♭';
@@ -93,102 +60,37 @@ function init(slug) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.textContent = item.label || `${root} ${item.mode}`;
-      btn.addEventListener('click', () => playScale(baseMidi, intervals));
+      btn.addEventListener('click', () => AudioKit.playSequence(baseMidi, intervals));
       container.appendChild(btn);
     });
     if (container.children.length) container.style.display = 'flex';
   }
 
-  // --- Drone (borrowed from mojotrio) — sustained root with optional perfect fifth.
-  // Root pitch comes from the song's "drone" field (note name, octave optional);
-  // a missing/null field leaves the drone off. ---
-  const FIFTH_RATIO = 1.5;
+  // --- Drone — sustained root with optional perfect fifth (shared engine in
+  // audio.js). Root pitch comes from the song's "drone" field (note name,
+  // octave optional); a missing/null field leaves the drone off. ---
   const dronePanel = document.getElementById('drone-panel');
   const droneBtn = document.getElementById('drone-btn');
   const fifthToggle = document.getElementById('drone-fifth');
   const volumeInput = document.getElementById('drone-volume');
-  let droneNodes = null;
-  let fifthOn = false;
-  let droneVolume = parseFloat(volumeInput.value);
-  let droneRootMidi = 56; // A♭3 default
   let droneLabel = 'A♭';
+  const drone = AudioKit.createDrone();
+  drone.setRoot(56); // A♭3 default
+  drone.setVolume(parseFloat(volumeInput.value));
 
-  function startDrone() {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === 'suspended') ctx.resume();
-    const root = midiToFreq(droneRootMidi);
-
-    const rootOsc = ctx.createOscillator();
-    const fifthOsc = ctx.createOscillator();
-    const fifthGain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
-    const fA = ctx.createBiquadFilter();
-    const fB = ctx.createBiquadFilter();
-    const fC = ctx.createBiquadFilter();
-    const gain = ctx.createGain();
-
-    rootOsc.type = 'sawtooth'; rootOsc.frequency.value = root;
-    fifthOsc.type = 'sawtooth'; fifthOsc.frequency.value = root * FIFTH_RATIO;
-    fifthGain.gain.value = fifthOn ? 1 : 0;
-
-    filter.type = 'lowpass'; filter.frequency.value = 5000; filter.Q.value = 0.7;
-    fA.type = 'peaking'; fA.frequency.value = 250; fA.Q.value = 4; fA.gain.value = 8;
-    fB.type = 'peaking'; fB.frequency.value = 450; fB.Q.value = 3; fB.gain.value = 6;
-    fC.type = 'peaking'; fC.frequency.value = 1800; fC.Q.value = 2; fC.gain.value = 5;
-
-    // sub-audible noise prevents Bluetooth codec silence-gating (audible pulsing)
-    const noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-    const nd = noiseBuf.getChannelData(0);
-    for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
-    const noise = ctx.createBufferSource();
-    noise.buffer = noiseBuf; noise.loop = true;
-    const noiseFilter = ctx.createBiquadFilter();
-    noiseFilter.type = 'bandpass'; noiseFilter.frequency.value = 2000; noiseFilter.Q.value = 0.6;
-    const noiseGain = ctx.createGain(); noiseGain.gain.value = 0.012;
-
-    rootOsc.connect(filter);
-    fifthOsc.connect(fifthGain); fifthGain.connect(filter);
-    filter.connect(fA); fA.connect(fB); fB.connect(fC); fC.connect(gain);
-    noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(gain);
-    gain.connect(ctx.destination);
-
-    const now = ctx.currentTime;
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(Math.max(droneVolume, 0.0001), now + 0.15);
-
-    rootOsc.start(); fifthOsc.start(); noise.start();
-    droneNodes = { ctx, rootOsc, fifthOsc, fifthGain, noise, gain };
-    droneBtn.textContent = 'stop';
-    droneBtn.classList.add('on');
-  }
-
-  function stopDrone() {
-    if (!droneNodes) return;
-    const { ctx, rootOsc, fifthOsc, noise, gain } = droneNodes;
-    const now = ctx.currentTime;
-    gain.gain.cancelScheduledValues(now);
-    gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
-    [rootOsc, fifthOsc, noise].forEach(o => { try { o.stop(now + 0.25); } catch (e) {} });
-    setTimeout(() => { try { ctx.close(); } catch (e) {} }, 400);
-    droneNodes = null;
-    droneBtn.textContent = droneLabel;
-    droneBtn.classList.remove('on');
-  }
-
-  droneBtn.addEventListener('click', () => { droneNodes ? stopDrone() : startDrone(); });
-  fifthToggle.addEventListener('change', () => {
-    fifthOn = fifthToggle.checked;
-    if (droneNodes) {
-      droneNodes.fifthGain.gain.setTargetAtTime(fifthOn ? 1 : 0, droneNodes.ctx.currentTime, 0.03);
+  droneBtn.addEventListener('click', () => {
+    if (drone.playing) {
+      drone.stop();
+      droneBtn.textContent = droneLabel;
+      droneBtn.classList.remove('on');
+    } else {
+      drone.start();
+      droneBtn.textContent = 'stop';
+      droneBtn.classList.add('on');
     }
   });
-  volumeInput.addEventListener('input', () => {
-    droneVolume = parseFloat(volumeInput.value);
-    if (droneNodes) {
-      droneNodes.gain.gain.setTargetAtTime(droneVolume, droneNodes.ctx.currentTime, 0.03);
-    }
-  });
+  fifthToggle.addEventListener('change', () => drone.setFifth(fifthToggle.checked));
+  volumeInput.addEventListener('input', () => drone.setVolume(parseFloat(volumeInput.value)));
 
   function showScore(src) {
     if (!src) { scoreWrapper.classList.remove('active'); return; }
@@ -437,7 +339,7 @@ function init(slug) {
 
       const droneMidi = song.drone != null ? pitchToMidi(song.drone) : null;
       if (droneMidi !== null) {
-        droneRootMidi = droneMidi;
+        drone.setRoot(droneMidi);
         droneLabel = String(song.drone);
         droneBtn.textContent = droneLabel;
         dronePanel.classList.add('active');
