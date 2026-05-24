@@ -39,20 +39,72 @@ const FLAT_POS_TREBLE = [4, 7, 3, 6, 2, 5, 1];
 // 'other' rows only appear under "show additional scales", under group headings.
 // descIntervals: distinct descending form (melodic minor goes up raised,
 // down as natural minor); when absent, descending is just the reverse.
+// letterSteps: how many letter-names above the tonic each degree spans, so notes
+// spell correctly (A♭ Dorian's 3rd is C♭, not B). Omitted = no diatonic spelling
+// (chromatic), falls back to sharps/flats by key.
 const MODES = [
-  { name: 'Ionian (major)',          basicName: 'Major',         group: 'basic', intervals: [0, 2, 4, 5, 7, 9, 11, 12] },
-  { name: 'Melodic minor',           basicName: 'Melodic minor', group: 'basic', intervals: [0, 2, 3, 5, 7, 9, 11, 12], descIntervals: [0, 2, 3, 5, 7, 8, 10, 12] },
-  { name: 'Aeolian (natural minor)', basicName: 'Natural minor', group: 'basic', intervals: [0, 2, 3, 5, 7, 8, 10, 12] },
-  { name: 'Dorian',                  group: 'mode',  intervals: [0, 2, 3, 5, 7, 9, 10, 12] },
-  { name: 'Phrygian',                group: 'mode',  intervals: [0, 1, 3, 5, 7, 8, 10, 12] },
-  { name: 'Lydian',                  group: 'mode',  intervals: [0, 2, 4, 6, 7, 9, 11, 12] },
-  { name: 'Mixolydian',              group: 'mode',  intervals: [0, 2, 4, 5, 7, 9, 10, 12] },
-  { name: 'Locrian',                 group: 'mode',  intervals: [0, 1, 3, 5, 6, 8, 10, 12] },
-  { name: 'Major pentatonic',        group: 'other', intervals: [0, 2, 4, 7, 9, 12] },
-  { name: 'Minor pentatonic',        group: 'other', intervals: [0, 3, 5, 7, 10, 12] },
-  { name: 'Whole tone',              group: 'other', intervals: [0, 2, 4, 6, 8, 10, 12] },
+  { name: 'Ionian (major)',          basicName: 'Major',         group: 'basic', intervals: [0, 2, 4, 5, 7, 9, 11, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Melodic minor',           basicName: 'Melodic minor', group: 'basic', intervals: [0, 2, 3, 5, 7, 9, 11, 12], descIntervals: [0, 2, 3, 5, 7, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Aeolian (natural minor)', basicName: 'Natural minor', group: 'basic', intervals: [0, 2, 3, 5, 7, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Dorian',                  group: 'mode',  intervals: [0, 2, 3, 5, 7, 9, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Phrygian',                group: 'mode',  intervals: [0, 1, 3, 5, 7, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Lydian',                  group: 'mode',  intervals: [0, 2, 4, 6, 7, 9, 11, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Mixolydian',              group: 'mode',  intervals: [0, 2, 4, 5, 7, 9, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Locrian',                 group: 'mode',  intervals: [0, 1, 3, 5, 6, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Major pentatonic',        group: 'other', intervals: [0, 2, 4, 7, 9, 12], letterSteps: [0, 1, 2, 4, 5, 7] },
+  { name: 'Minor pentatonic',        group: 'other', intervals: [0, 3, 5, 7, 10, 12], letterSteps: [0, 2, 3, 4, 6, 7] },
+  { name: 'Whole tone',              group: 'other', intervals: [0, 2, 4, 6, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 7] },
   { name: 'Chromatic',               group: 'other', intervals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
 ];
+
+// --- note spelling -------------------------------------------------------
+// Spell scale notes by letter name so accidentals are correct for the key
+// (e.g. A♭ Dorian: A♭ B♭ C♭ D♭ E♭ F G♭ — not ...B...).
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
+
+function parseTonic(root) {
+  const li = LETTERS.indexOf(root[0].toUpperCase());
+  const acc = root[1] === 'b' || root[1] === '♭' ? -1 : (root[1] === '#' || root[1] === '♯' ? 1 : 0);
+  return { letterIdx: li, pc: (LETTER_PC[li] + acc + 12) % 12 };
+}
+
+function spellPc(letterIdx, pc) {
+  const diff = ((pc - LETTER_PC[letterIdx] + 6) % 12 + 12) % 12 - 6; // nearest signed offset
+  const glyphs = { '-2': '𝄫', '-1': '♭', '0': '', '1': '♯', '2': '𝄪' };
+  const key = String(diff);
+  const glyph = Object.prototype.hasOwnProperty.call(glyphs, key) ? glyphs[key] : '?';
+  return LETTERS[letterIdx] + glyph;
+}
+
+// Map pitch-class -> spelled name for the scale's notes (and its descending
+// form, if any). Returns null when the scale has no diatonic letter mapping.
+function buildSpellMap(root, mode) {
+  if (!mode.letterSteps) return null;
+  const { letterIdx, pc: tonicPc } = parseTonic(root);
+  if (letterIdx < 0) return null;
+  const map = {};
+  const add = (intervals) => intervals.forEach((iv, d) => {
+    const step = mode.letterSteps[d];
+    if (step == null) return;
+    const li = (letterIdx + step) % 7;
+    map[(tonicPc + iv) % 12] = spellPc(li, (tonicPc + iv) % 12);
+  });
+  add(mode.intervals);
+  if (mode.descIntervals) add(mode.descIntervals);
+  return map;
+}
+
+// Returns a function semi -> displayed note name for the given tonal center/scale.
+function makeNamer(root, mode) {
+  const base = pitchToMidi(root, 4);
+  const preferFlats = CIRCLE[selectedIndex].sig < 0;
+  const map = buildSpellMap(root, mode);
+  return (semi) => {
+    const pc = ((base + semi) % 12 + 12) % 12;
+    return (map && map[pc] != null) ? map[pc] : AudioKit.midiToName(base + semi, preferFlats);
+  };
+}
 
 const GROUP_LABEL = { mode: 'modes', other: 'other scales' };
 
@@ -136,15 +188,15 @@ function stopPlayback() {
 
 // Click handler for a play button: toggles stop if it's already this button's
 // scale, otherwise switches to the new scale (never stacks two at once).
-function togglePlay(button, baseMidi, makeSeq, rowReadout) {
+function togglePlay(button, baseMidi, makeSeq, rowReadout, namer) {
   if (playingButton === button) { stopPlayback(); return; }
   if (playingButton) playingButton.classList.remove('playing');
   if (loopTimerId) { clearTimeout(loopTimerId); loopTimerId = null; }
   playingButton = button;
   button.classList.add('playing');
-  currentPlay = { baseMidi, makeSeq, rowReadout };
+  currentPlay = { baseMidi, makeSeq, rowReadout, namer };
   clearReadouts();
-  schedulePass(baseMidi, makeSeq, rowReadout, null, false);
+  schedulePass(baseMidi, makeSeq, rowReadout, namer, null, false);
 }
 
 // Re-trigger the current looping scale so a toggled option takes effect now
@@ -153,18 +205,17 @@ function restartIfLooping() {
   if (playingButton && loopOn && currentPlay) {
     if (loopTimerId) { clearTimeout(loopTimerId); loopTimerId = null; }
     clearReadouts();
-    schedulePass(currentPlay.baseMidi, currentPlay.makeSeq, currentPlay.rowReadout, null, false);
+    schedulePass(currentPlay.baseMidi, currentPlay.makeSeq, currentPlay.rowReadout, currentPlay.namer, null, false);
   }
 }
 
 // Play one pass, then either schedule the next pass exactly on the audio clock
 // (gapless loop) or finish. `when` is the absolute start time (null = default
 // lead-in); `chain` keeps the previous pass's tail so the seam is seamless.
-function schedulePass(baseMidi, makeSeq, rowReadout, when, chain) {
+function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain) {
   const seq = makeSeq();
   const step = (60 / tempoBpm) / SUBDIVS[subdivIndex].perBeat;
   const art = ARTIC[articulation] || ARTIC.legato;
-  const preferFlats = CIRCLE[selectedIndex].sig < 0;
   const center = document.getElementById('playing-note');
   // When looping without repeating the turnaround, drop a trailing note that
   // duplicates the first (e.g. up-then-down) so the bottom isn't struck twice.
@@ -179,7 +230,7 @@ function schedulePass(baseMidi, makeSeq, rowReadout, when, chain) {
     when,
     chain,
     onNote: (semi) => {
-      const name = AudioKit.midiToName(baseMidi + semi, preferFlats);
+      const name = namer(semi);
       if (center) center.textContent = name;
       if (rowReadout) rowReadout.textContent = name;
     },
@@ -191,7 +242,7 @@ function schedulePass(baseMidi, makeSeq, rowReadout, when, chain) {
     const delay = Math.max(0, (nextStart - lead - AudioKit.currentTime()) * 1000);
     loopTimerId = setTimeout(() => {
       if (loopOn && playingButton) {
-        schedulePass(baseMidi, makeSeq, rowReadout, nextStart, true);
+        schedulePass(baseMidi, makeSeq, rowReadout, namer, nextStart, true);
       } else {
         loopTimerId = setTimeout(finishPlayback, Math.max(0, (nextStart - AudioKit.currentTime()) * 1000));
       }
@@ -357,15 +408,16 @@ function buildModes() {
     const readout = document.createElement('span');
     readout.className = 'note-readout';
     name.append(labelEl, readout);
+    const namer = makeNamer(root, mode); // spells this scale's notes correctly
     const asc = document.createElement('button');
     asc.type = 'button';
     asc.append(makeArrow(autoDescend ? '▲▼' : '▲'), makeLabel(autoDescend ? 'up + down' : 'ascending'));
     asc.addEventListener('click', () =>
-      togglePlay(asc, base, () => (autoDescend ? seqUpDown(mode) : seqAsc(mode)), readout));
+      togglePlay(asc, base, () => (autoDescend ? seqUpDown(mode) : seqAsc(mode)), readout, namer));
     const desc = document.createElement('button');
     desc.type = 'button';
     desc.append(makeArrow('▼'), makeLabel('descending'));
-    desc.addEventListener('click', () => togglePlay(desc, base, () => seqDesc(mode), readout));
+    desc.addEventListener('click', () => togglePlay(desc, base, () => seqDesc(mode), readout, namer));
     row.append(name, asc, desc);
     wrap.appendChild(row);
   });
