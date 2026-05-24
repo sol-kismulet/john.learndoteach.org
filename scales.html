@@ -68,9 +68,16 @@
     .node:focus { outline: none; }
     .node:focus-visible circle { stroke: #9cd8ff; stroke-width: 2.5; }
     .node .alt { font-size: 12px; fill: rgba(255, 255, 255, 0.55); }
+    .node .minor {
+      font-size: 13px;
+      font-weight: 400;
+      fill: rgba(255, 255, 255, 0.4);
+      pointer-events: none;
+    }
     .node.selected circle { fill: #9cd8ff; stroke: #9cd8ff; }
     .node.selected text { fill: #06121c; }
     .node.selected .sig { fill: #9cd8ff; }
+    .node.selected .minor { fill: #9cd8ff; font-weight: 500; }
 
     .node .sig {
       fill: rgba(255, 255, 255, 0.5);
@@ -92,7 +99,8 @@
       color: rgba(255, 255, 255, 0.55);
       z-index: 10;
     }
-    #clef-toggle { display: none; }
+    #clef-toggle { display: none; align-items: center; }
+    .clef-ico { font-size: 1.5rem; line-height: 1; color: rgba(255, 255, 255, 0.75); }
 
     #keysig {
       display: none;
@@ -110,12 +118,41 @@
     }
     .center #center-label { color: #9cd8ff; font-size: 1.7rem; }
 
-    .scale-opts {
+    .controls {
       display: flex;
+      flex-wrap: wrap;
+      align-items: center;
       justify-content: center;
+      gap: 0.7rem 1.4rem;
       font-size: 0.95rem;
-      color: rgba(255, 255, 255, 0.55);
+      color: rgba(255, 255, 255, 0.6);
       margin-top: -0.5rem;
+    }
+    .ctl { display: inline-flex; align-items: center; gap: 0.5em; }
+    .ctl input[type="range"] { width: 6em; }
+    .ctl-val { min-width: 1ch; color: #9cd8ff; }
+    .ctl .unit { opacity: 0.55; }
+    .ctl input[type="number"],
+    .ctl select {
+      background: #000;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 0.2em 0.35em;
+    }
+    .ctl input[type="number"] { width: 3.4em; }
+    .ctl input[type="number"]:hover,
+    .ctl select:hover { border-color: #9cd8ff; }
+
+    .mode-group {
+      margin: 0.7rem 0 0.1rem;
+      font-size: 0.8rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.4);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      padding-bottom: 0.2rem;
     }
     #modes {
       width: min(460px, 94vw);
@@ -205,24 +242,25 @@
       show sharps &amp; flats
     </label>
     <label class="switch">
-      <input id="toggle-modes" type="checkbox">
+      <input id="toggle-extra" type="checkbox">
       <span class="track"><span class="thumb"></span></span>
-      show modes
+      show additional scales
     </label>
     <label class="switch">
       <input id="toggle-keysig" type="checkbox">
       <span class="track"><span class="thumb"></span></span>
       show key signatures
     </label>
-    <label class="switch" id="clef-toggle">
+    <label class="switch" id="clef-toggle" title="bass / treble clef">
+      <span class="clef-ico">&#x1D122;</span>
       <input id="toggle-treble" type="checkbox">
       <span class="track"><span class="thumb"></span></span>
-      treble clef
+      <span class="clef-ico">&#x1D11E;</span>
     </label>
   </div>
 
   <h1>scales</h1>
-  <p class="hint">pick a tonal center on the circle of fifths, then play each mode up or down</p>
+  <p class="hint">pick a tonal center on the circle of fifths, then play each scale up or down</p>
 
   <svg id="circle" viewBox="0 0 360 360" aria-label="circle of fifths"></svg>
 
@@ -243,7 +281,25 @@
     </label>
   </div>
 
-  <div class="scale-opts">
+  <div class="controls">
+    <label class="ctl">
+      octaves
+      <input id="octaves" type="range" min="1" max="3" step="1" value="1">
+      <span id="octaves-val" class="ctl-val">1</span>
+    </label>
+    <label class="ctl">
+      tempo
+      <input id="tempo" type="number" min="40" max="300" step="1" value="120">
+      <span class="unit">bpm</span>
+    </label>
+    <label class="ctl">
+      articulation
+      <select id="articulation">
+        <option value="staccato">staccato</option>
+        <option value="portato">portato</option>
+        <option value="legato" selected>legato</option>
+      </select>
+    </label>
     <label class="switch">
       <input id="auto-descend" type="checkbox">
       <span class="track"><span class="thumb"></span></span>

@@ -11,18 +11,18 @@ const NS = 'http://www.w3.org/2000/svg';
 // Tonal centers clockwise around the circle of fifths, starting at the top.
 // sig = major-key signature: positive = sharps, negative = flats.
 const CIRCLE = [
-  { label: 'C',  root: 'C',  sig: 0 },
-  { label: 'G',  root: 'G',  sig: 1 },
-  { label: 'D',  root: 'D',  sig: 2 },
-  { label: 'A',  root: 'A',  sig: 3 },
-  { label: 'E',  root: 'E',  sig: 4 },
-  { label: 'B',  alt: 'C♭', root: 'B',  sig: 5 },
-  { label: 'G♭', alt: 'F♯', root: 'Gb', sig: -6 },
-  { label: 'D♭', alt: 'C♯', root: 'Db', sig: -5 },
-  { label: 'A♭', root: 'Ab', sig: -4 },
-  { label: 'E♭', root: 'Eb', sig: -3 },
-  { label: 'B♭', root: 'Bb', sig: -2 },
-  { label: 'F',  root: 'F',  sig: -1 },
+  { label: 'C',  root: 'C',  sig: 0,  minor: 'Am' },
+  { label: 'G',  root: 'G',  sig: 1,  minor: 'Em' },
+  { label: 'D',  root: 'D',  sig: 2,  minor: 'Bm' },
+  { label: 'A',  root: 'A',  sig: 3,  minor: 'F♯m' },
+  { label: 'E',  root: 'E',  sig: 4,  minor: 'C♯m' },
+  { label: 'B',  alt: 'C♭', root: 'B',  sig: 5,  minor: 'G♯m', minorAlt: 'A♭m' },
+  { label: 'G♭', alt: 'F♯', root: 'Gb', sig: -6, minor: 'E♭m', minorAlt: 'D♯m' },
+  { label: 'D♭', alt: 'C♯', root: 'Db', sig: -5, minor: 'B♭m', minorAlt: 'A♯m' },
+  { label: 'A♭', root: 'Ab', sig: -4, minor: 'Fm' },
+  { label: 'E♭', root: 'Eb', sig: -3, minor: 'Cm' },
+  { label: 'B♭', root: 'Bb', sig: -2, minor: 'Gm' },
+  { label: 'F',  root: 'F',  sig: -1, minor: 'Dm' },
 ];
 
 function sigLabel(n) {
@@ -38,23 +38,29 @@ const FLAT_ORDER = ['B', 'E', 'A', 'D', 'G', 'C', 'F'];
 const SHARP_POS_TREBLE = [8, 5, 9, 6, 3, 7, 4];
 const FLAT_POS_TREBLE = [4, 7, 3, 6, 2, 5, 1];
 
-// Semitone offsets from the tonic, including the octave.
-// basic: shown when "show modes" is off (with the friendlier basicName).
+// Semitone offsets from the tonic, including the octave (one octave).
+// group: 'basic' rows always show (with the friendlier basicName); 'mode' and
+// 'other' rows only appear under "show additional scales", under group headings.
 // descIntervals: distinct descending form (melodic minor goes up raised,
 // down as natural minor); when absent, descending is just the reverse.
 const MODES = [
-  { name: 'Ionian (major)',          basicName: 'Major',         basic: true, intervals: [0, 2, 4, 5, 7, 9, 11, 12] },
-  { name: 'Dorian',                  intervals: [0, 2, 3, 5, 7, 9, 10, 12] },
-  { name: 'Phrygian',                intervals: [0, 1, 3, 5, 7, 8, 10, 12] },
-  { name: 'Lydian',                  intervals: [0, 2, 4, 6, 7, 9, 11, 12] },
-  { name: 'Mixolydian',              intervals: [0, 2, 4, 5, 7, 9, 10, 12] },
-  { name: 'Aeolian (natural minor)', basicName: 'Natural minor', basic: true, intervals: [0, 2, 3, 5, 7, 8, 10, 12] },
-  { name: 'Melodic minor',           basicName: 'Melodic minor', basic: true, intervals: [0, 2, 3, 5, 7, 9, 11, 12], descIntervals: [0, 2, 3, 5, 7, 8, 10, 12] },
-  { name: 'Locrian',                 intervals: [0, 1, 3, 5, 6, 8, 10, 12] },
+  { name: 'Ionian (major)',          basicName: 'Major',         group: 'basic', intervals: [0, 2, 4, 5, 7, 9, 11, 12] },
+  { name: 'Melodic minor',           basicName: 'Melodic minor', group: 'basic', intervals: [0, 2, 3, 5, 7, 9, 11, 12], descIntervals: [0, 2, 3, 5, 7, 8, 10, 12] },
+  { name: 'Aeolian (natural minor)', basicName: 'Natural minor', group: 'basic', intervals: [0, 2, 3, 5, 7, 8, 10, 12] },
+  { name: 'Dorian',                  group: 'mode',  intervals: [0, 2, 3, 5, 7, 9, 10, 12] },
+  { name: 'Phrygian',                group: 'mode',  intervals: [0, 1, 3, 5, 7, 8, 10, 12] },
+  { name: 'Lydian',                  group: 'mode',  intervals: [0, 2, 4, 6, 7, 9, 11, 12] },
+  { name: 'Mixolydian',              group: 'mode',  intervals: [0, 2, 4, 5, 7, 9, 10, 12] },
+  { name: 'Locrian',                 group: 'mode',  intervals: [0, 1, 3, 5, 6, 8, 10, 12] },
+  { name: 'Whole tone',              group: 'other', intervals: [0, 2, 4, 6, 8, 10, 12] },
+  { name: 'Chromatic',               group: 'other', intervals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
 ];
 
+const GROUP_LABEL = { mode: 'modes', other: 'other scales' };
+
 let selectedIndex = 0; // default C
-let showModes = false;
+let showExtra = false; // "show additional scales"
+let octaves = 1;
 
 function pitchToMidi(name, defaultOctave = 3) {
   const m = String(name).trim().match(/^([A-Ga-g])([#♯b♭]?)(-?\d+)?$/);
@@ -69,34 +75,58 @@ function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 // --- scale playback ---
 let audioCtx = null;
 let autoDescend = false;
+let tempoBpm = 120;
+let articulation = 'legato';
 
-// Sequence builders (arrays of semitone offsets from the tonic). A mode may
-// carry a distinct descIntervals (e.g. melodic minor); otherwise descending
+// gate = fraction of the beat the note actually sounds; atk = attack time.
+const ARTIC = {
+  staccato: { gate: 0.35, atk: 0.004 },
+  portato:  { gate: 0.68, atk: 0.012 },
+  legato:   { gate: 0.98, atk: 0.030 },
+};
+
+// Expand a one-octave interval set (ending on 12) across `octaves` octaves,
+// e.g. major over 2 octaves -> 0,2,4,5,7,9,11,12,14,16,17,19,21,23,24.
+function expand(oneOctave, n) {
+  const degrees = oneOctave.slice(0, -1);
+  const out = [];
+  for (let o = 0; o < n; o++) for (const d of degrees) out.push(d + 12 * o);
+  out.push(12 * n);
+  return out;
+}
+
+// Sequence builders (semitone offsets from the tonic, across `octaves`). A mode
+// may carry a distinct descIntervals (e.g. melodic minor); otherwise descending
 // is just the ascending form reversed.
-const seqAsc = (mode) => mode.intervals;
-const seqDesc = (mode) => (mode.descIntervals || mode.intervals).slice().reverse();
-// up then back down, with the octave as a single turnaround note.
-const seqUpDown = (mode) =>
-  mode.intervals.concat((mode.descIntervals || mode.intervals).slice(0, -1).reverse());
+const seqAsc = (mode) => expand(mode.intervals, octaves);
+const seqDesc = (mode) => expand(mode.descIntervals || mode.intervals, octaves).reverse();
+// up then back down, with the top note as a single turnaround.
+const seqUpDown = (mode) => {
+  const up = expand(mode.intervals, octaves);
+  const down = expand(mode.descIntervals || mode.intervals, octaves);
+  return up.concat(down.slice(0, -1).reverse());
+};
 
 function playSequence(baseMidi, seq) {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
   const ctx = audioCtx;
-  const noteDur = 0.38;
+  const step = 60 / tempoBpm;
+  const art = ARTIC[articulation] || ARTIC.legato;
+  const gate = Math.max(step * art.gate, 0.05);
   const start = ctx.currentTime + 0.05;
   seq.forEach((semi, i) => {
-    const t = start + i * noteDur;
+    const t = start + i * step;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'triangle';
     osc.frequency.value = midiToFreq(baseMidi + semi);
     gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.linearRampToValueAtTime(0.25, t + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + noteDur * 0.92);
+    gain.gain.linearRampToValueAtTime(0.25, t + Math.min(art.atk, gate * 0.5));
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + gate);
     osc.connect(gain).connect(ctx.destination);
     osc.start(t);
-    osc.stop(t + noteDur);
+    osc.stop(t + gate + 0.05);
   });
 }
 
@@ -181,7 +211,7 @@ function retuneDrone() {
 // --- UI ---
 function buildCircle() {
   const svg = document.getElementById('circle');
-  const cx = 180, cy = 180, ringR = 118, sigR = 152;
+  const cx = 180, cy = 180, ringR = 118, sigR = 152, minorR = 74;
   CIRCLE.forEach((entry, i) => {
     const ang = (-90 + i * 30) * Math.PI / 180;
     const x = cx + ringR * Math.cos(ang);
@@ -217,6 +247,15 @@ function buildCircle() {
       a.textContent = entry.alt;
       g.appendChild(a);
     }
+    // relative minor, on the inner ring (informational, not a click target)
+    const m = document.createElementNS(NS, 'text');
+    m.setAttribute('class', 'minor');
+    m.setAttribute('x', cx + minorR * Math.cos(ang));
+    m.setAttribute('y', cy + minorR * Math.sin(ang));
+    m.setAttribute('text-anchor', 'middle');
+    m.setAttribute('dominant-baseline', 'central');
+    m.textContent = entry.minor;
+    g.appendChild(m);
     g.addEventListener('click', () => select(i));
     g.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(i); }
@@ -289,13 +328,21 @@ function buildModes() {
   const base = pitchToMidi(root, 4);
   const wrap = document.getElementById('modes');
   wrap.innerHTML = '';
-  const list = showModes ? MODES : MODES.filter(m => m.basic);
+  const list = showExtra ? MODES : MODES.filter(m => m.group === 'basic');
+  let lastGroup = null;
   list.forEach(mode => {
+    if (mode.group !== 'basic' && mode.group !== lastGroup) {
+      const h = document.createElement('div');
+      h.className = 'mode-group';
+      h.textContent = GROUP_LABEL[mode.group];
+      wrap.appendChild(h);
+    }
+    lastGroup = mode.group;
     const row = document.createElement('div');
     row.className = 'mode-row';
     const name = document.createElement('span');
     name.className = 'mode-name';
-    const display = (!showModes && mode.basicName) ? mode.basicName : mode.name;
+    const display = mode.basicName || mode.name;
     name.textContent = `${label} ${display}`;
     const asc = document.createElement('button');
     asc.type = 'button';
@@ -338,6 +385,26 @@ function initScaleOptions() {
     autoDescend = ad.checked;
     buildModes();
   });
+
+  const oct = document.getElementById('octaves');
+  const octVal = document.getElementById('octaves-val');
+  octaves = parseInt(oct.value, 10);
+  octVal.textContent = octaves;
+  oct.addEventListener('input', () => {
+    octaves = parseInt(oct.value, 10);
+    octVal.textContent = octaves;
+  });
+
+  const tempo = document.getElementById('tempo');
+  tempoBpm = parseInt(tempo.value, 10);
+  tempo.addEventListener('input', () => {
+    const v = parseInt(tempo.value, 10);
+    if (Number.isFinite(v) && v > 0) tempoBpm = v;
+  });
+
+  const artic = document.getElementById('articulation');
+  articulation = artic.value;
+  artic.addEventListener('change', () => { articulation = artic.value; });
 }
 
 function initViewToggles() {
@@ -345,9 +412,9 @@ function initViewToggles() {
   const sig = document.getElementById('toggle-sig');
   sig.addEventListener('change', () => svg.classList.toggle('show-sig', sig.checked));
 
-  const modes = document.getElementById('toggle-modes');
-  modes.addEventListener('change', () => {
-    showModes = modes.checked;
+  const extra = document.getElementById('toggle-extra');
+  extra.addEventListener('change', () => {
+    showExtra = extra.checked;
     buildModes();
   });
 
