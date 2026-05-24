@@ -32,14 +32,16 @@ function sigLabel(n) {
 
 // Semitone offsets from the tonic, including the octave.
 // basic: shown when "show modes" is off (with the friendlier basicName).
+// descIntervals: distinct descending form (melodic minor goes up raised,
+// down as natural minor); when absent, descending is just the reverse.
 const MODES = [
   { name: 'Ionian (major)',          basicName: 'Major',         basic: true, intervals: [0, 2, 4, 5, 7, 9, 11, 12] },
   { name: 'Dorian',                  intervals: [0, 2, 3, 5, 7, 9, 10, 12] },
   { name: 'Phrygian',                intervals: [0, 1, 3, 5, 7, 8, 10, 12] },
   { name: 'Lydian',                  intervals: [0, 2, 4, 6, 7, 9, 11, 12] },
   { name: 'Mixolydian',              intervals: [0, 2, 4, 5, 7, 9, 10, 12] },
-  { name: 'Aeolian (natural minor)', intervals: [0, 2, 3, 5, 7, 8, 10, 12] },
-  { name: 'Harmonic minor',          basicName: 'Harmonic minor', basic: true, intervals: [0, 2, 3, 5, 7, 8, 11, 12] },
+  { name: 'Aeolian (natural minor)', basicName: 'Natural minor', basic: true, intervals: [0, 2, 3, 5, 7, 8, 10, 12] },
+  { name: 'Melodic minor',           basicName: 'Melodic minor', basic: true, intervals: [0, 2, 3, 5, 7, 9, 11, 12], descIntervals: [0, 2, 3, 5, 7, 8, 10, 12] },
   { name: 'Locrian',                 intervals: [0, 1, 3, 5, 6, 8, 10, 12] },
 ];
 
@@ -60,11 +62,14 @@ function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 let audioCtx = null;
 let autoDescend = false;
 
-// Sequence builders (arrays of semitone offsets from the tonic).
-const ascSeq = (iv) => iv;
-const descSeq = (iv) => iv.slice().reverse();
+// Sequence builders (arrays of semitone offsets from the tonic). A mode may
+// carry a distinct descIntervals (e.g. melodic minor); otherwise descending
+// is just the ascending form reversed.
+const seqAsc = (mode) => mode.intervals;
+const seqDesc = (mode) => (mode.descIntervals || mode.intervals).slice().reverse();
 // up then back down, with the octave as a single turnaround note.
-const upDownSeq = (iv) => iv.concat(iv.slice(0, -1).reverse());
+const seqUpDown = (mode) =>
+  mode.intervals.concat((mode.descIntervals || mode.intervals).slice(0, -1).reverse());
 
 function playSequence(baseMidi, seq) {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -230,11 +235,11 @@ function buildModes() {
     asc.type = 'button';
     asc.textContent = autoDescend ? '▲▼ up + down' : '▲ ascending';
     asc.addEventListener('click', () =>
-      playSequence(base, autoDescend ? upDownSeq(mode.intervals) : ascSeq(mode.intervals)));
+      playSequence(base, autoDescend ? seqUpDown(mode) : seqAsc(mode)));
     const desc = document.createElement('button');
     desc.type = 'button';
     desc.textContent = '▼ descending';
-    desc.addEventListener('click', () => playSequence(base, descSeq(mode.intervals)));
+    desc.addEventListener('click', () => playSequence(base, seqDesc(mode)));
     row.append(name, asc, desc);
     wrap.appendChild(row);
   });
