@@ -69,6 +69,7 @@ let articulation = 'legato';
 let loopOn = false;
 let repeatEnds = false; // when looping, repeat the turnaround (top/bottom) notes
 let playingButton = null; // the play button whose scale is currently sounding
+let currentPlay = null; // { baseMidi, makeSeq, rowReadout } for re-triggering a loop
 
 // Note value per beat: how many scale notes fit in one quarter-note beat.
 let subdivIndex = 0;
@@ -120,6 +121,7 @@ function stopPlayback() {
   AudioKit.stopSequence();
   if (playingButton) playingButton.classList.remove('playing');
   playingButton = null;
+  currentPlay = null;
   clearReadouts();
 }
 
@@ -130,7 +132,16 @@ function togglePlay(button, baseMidi, makeSeq, rowReadout) {
   if (playingButton) playingButton.classList.remove('playing');
   playingButton = button;
   button.classList.add('playing');
+  currentPlay = { baseMidi, makeSeq, rowReadout };
   runSequence(baseMidi, makeSeq, rowReadout);
+}
+
+// Re-trigger the current looping scale so a toggled option takes effect now
+// instead of only after a manual stop/restart.
+function restartIfLooping() {
+  if (playingButton && loopOn && currentPlay) {
+    runSequence(currentPlay.baseMidi, currentPlay.makeSeq, currentPlay.rowReadout);
+  }
 }
 
 function runSequence(baseMidi, makeSeq, rowReadout) {
@@ -397,7 +408,10 @@ function initScaleOptions() {
 
   const repeat = document.getElementById('repeat-ends');
   repeatEnds = repeat.checked;
-  repeat.addEventListener('change', () => { repeatEnds = repeat.checked; });
+  repeat.addEventListener('change', () => {
+    repeatEnds = repeat.checked;
+    restartIfLooping(); // apply immediately to a running loop
+  });
 
   const artic = document.getElementById('articulation');
   articulation = artic.value;
