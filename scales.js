@@ -40,7 +40,7 @@ const MODES = [
   { name: 'Phrygian',                intervals: [0, 1, 3, 5, 7, 8, 10, 12] },
   { name: 'Lydian',                  intervals: [0, 2, 4, 6, 7, 9, 11, 12] },
   { name: 'Mixolydian',              intervals: [0, 2, 4, 5, 7, 9, 10, 12] },
-  { name: 'Aeolian (natural minor)', intervals: [0, 2, 3, 5, 7, 8, 10, 12] },
+  { name: 'Aeolian (natural minor)', basicName: 'Natural minor', basic: true, intervals: [0, 2, 3, 5, 7, 8, 10, 12] },
   { name: 'Melodic minor',           basicName: 'Melodic minor', basic: true, intervals: [0, 2, 3, 5, 7, 9, 11, 12], descIntervals: [0, 2, 3, 5, 7, 8, 10, 12] },
   { name: 'Locrian',                 intervals: [0, 1, 3, 5, 6, 8, 10, 12] },
 ];
