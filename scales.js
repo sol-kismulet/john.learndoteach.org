@@ -16,9 +16,9 @@ const CIRCLE = [
   { label: 'D',  root: 'D',  sig: 2 },
   { label: 'A',  root: 'A',  sig: 3 },
   { label: 'E',  root: 'E',  sig: 4 },
-  { label: 'B',  root: 'B',  sig: 5 },
-  { label: 'G♭', root: 'Gb', sig: -6 },
-  { label: 'D♭', root: 'Db', sig: -5 },
+  { label: 'B',  alt: 'C♭', root: 'B',  sig: 5 },
+  { label: 'G♭', alt: 'F♯', root: 'Gb', sig: -6 },
+  { label: 'D♭', alt: 'C♯', root: 'Db', sig: -5 },
   { label: 'A♭', root: 'Ab', sig: -4 },
   { label: 'E♭', root: 'Eb', sig: -3 },
   { label: 'B♭', root: 'Bb', sig: -2 },
@@ -190,13 +190,14 @@ function buildCircle() {
     g.setAttribute('class', 'node');
     g.setAttribute('tabindex', '0');
     g.setAttribute('role', 'button');
-    g.setAttribute('aria-label', `${entry.label}, ${sigLabel(entry.sig)}`);
+    g.setAttribute('aria-label', `${entry.label}${entry.alt ? ' or ' + entry.alt : ''}, ${sigLabel(entry.sig)}`);
     const c = document.createElementNS(NS, 'circle');
     c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 24);
     const t = document.createElementNS(NS, 'text');
-    t.setAttribute('x', x); t.setAttribute('y', y);
+    t.setAttribute('x', x);
     t.setAttribute('text-anchor', 'middle');
     t.setAttribute('dominant-baseline', 'central');
+    t.setAttribute('y', entry.alt ? y - 6 : y); // shift up to make room for the enharmonic
     t.textContent = entry.label;
     // key-signature label just outside the ring (shown via the show-sig toggle)
     const s = document.createElementNS(NS, 'text');
@@ -207,6 +208,15 @@ function buildCircle() {
     s.setAttribute('dominant-baseline', 'central');
     s.textContent = sigLabel(entry.sig);
     g.append(c, t, s);
+    if (entry.alt) {
+      const a = document.createElementNS(NS, 'text');
+      a.setAttribute('class', 'alt');
+      a.setAttribute('x', x); a.setAttribute('y', y + 9);
+      a.setAttribute('text-anchor', 'middle');
+      a.setAttribute('dominant-baseline', 'central');
+      a.textContent = entry.alt;
+      g.appendChild(a);
+    }
     g.addEventListener('click', () => select(i));
     g.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(i); }
@@ -219,7 +229,8 @@ function buildCircle() {
 function select(i) {
   selectedIndex = i;
   CIRCLE.forEach((e, j) => e.el.classList.toggle('selected', j === i));
-  document.getElementById('center-label').textContent = CIRCLE[i].label;
+  const c = CIRCLE[i];
+  document.getElementById('center-label').textContent = c.alt ? `${c.label} / ${c.alt}` : c.label;
   droneRootMidi = pitchToMidi(CIRCLE[i].root, 3);
   retuneDrone();
   buildModes();
