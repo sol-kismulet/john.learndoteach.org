@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>scales</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: "Cormorant Garamond", serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 2.5rem 1rem 4rem;
+      box-sizing: border-box;
+    }
+    a { color: #9cd8ff; }
+    .back {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      font-size: 1rem;
+      color: #666;
+      text-decoration: none;
+    }
+    .back:hover { color: #d8d8ff; }
+
+    h1 {
+      margin: 0;
+      font-size: 2.2rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: lowercase;
+    }
+    .hint {
+      margin: -0.5rem 0 0;
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.5);
+      font-style: italic;
+      text-align: center;
+    }
+
+    #circle {
+      width: min(360px, 92vw);
+      height: auto;
+    }
+    .node circle {
+      fill: #161616;
+      stroke: #555;
+      stroke-width: 1.5;
+      transition: fill 0.15s, stroke 0.15s;
+    }
+    .node text {
+      fill: #cfcfcf;
+      font-size: 18px;
+      font-weight: 500;
+      pointer-events: none;
+    }
+    .node { cursor: pointer; }
+    .node:hover circle { stroke: #9cd8ff; }
+    .node:focus { outline: none; }
+    .node:focus-visible circle { stroke: #9cd8ff; stroke-width: 2.5; }
+    .node.selected circle { fill: #9cd8ff; stroke: #9cd8ff; }
+    .node.selected text { fill: #06121c; }
+
+    .center {
+      font-size: 1.4rem;
+      letter-spacing: 0.04em;
+    }
+    .center #center-label { color: #9cd8ff; font-size: 1.7rem; }
+
+    #modes {
+      width: min(460px, 94vw);
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .mode-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      flex-wrap: wrap;
+    }
+    .mode-name {
+      flex: 1 1 11rem;
+      font-size: 1.2rem;
+    }
+
+    button {
+      background: none;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.35em 0.7em;
+      cursor: pointer;
+    }
+    button:hover { border-color: #9cd8ff; color: #fff; }
+
+    .drone {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem 1.1rem;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.55);
+    }
+    #drone-btn.on { border-color: #c8743c; color: #f0b48a; }
+    .drone-fifth {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45em;
+      cursor: pointer;
+      user-select: none;
+    }
+    .drone-fifth input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .drone-fifth .track {
+      width: 2.4em;
+      height: 1.2em;
+      border: 1px solid #666;
+      border-radius: 1em;
+      position: relative;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .drone-fifth .thumb {
+      position: absolute;
+      top: 50%;
+      left: 0.15em;
+      width: 0.9em;
+      height: 0.9em;
+      transform: translateY(-50%);
+      background: #ddd;
+      border-radius: 50%;
+      transition: left 0.15s, background 0.15s;
+    }
+    .drone-fifth input:checked + .track { background: #7a4322; border-color: #c8743c; }
+    .drone-fifth input:checked + .track .thumb { left: calc(100% - 1.05em); background: #f0b48a; }
+    .drone-vol { display: inline-flex; align-items: center; gap: 0.5em; }
+    .drone-vol input[type="range"] { width: 6em; }
+  </style>
+</head>
+<body>
+  <a class="back" href="index.html">← back</a>
+
+  <h1>scales</h1>
+  <p class="hint">pick a tonal center on the circle of fifths, then play each mode up or down</p>
+
+  <svg id="circle" viewBox="0 0 320 320" aria-label="circle of fifths"></svg>
+
+  <div class="center">tonal center: <span id="center-label">—</span></div>
+
+  <div class="drone">
+    <button id="drone-btn" type="button">drone</button>
+    <label class="drone-fifth">
+      <input id="drone-fifth" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      add 5th
+    </label>
+    <label class="drone-vol">
+      vol
+      <input id="drone-volume" type="range" min="0" max="0.4" step="0.01" value="0.1">
+    </label>
+  </div>
+
+  <div id="modes"></div>
+
+  <script src="scales.js"></script>
+</body>
+</html>
