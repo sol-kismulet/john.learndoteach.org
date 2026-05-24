@@ -64,7 +64,7 @@ const { pitchToMidi } = AudioKit;
 
 // --- scale playback ---
 let autoDescend = false;
-let tempoBpm = 120;
+let tempoBpm = 112;
 let articulation = 'legato';
 let loopOn = false;
 let repeatEnds = false; // when looping, repeat the turnaround (top/bottom) notes
