@@ -17,7 +17,7 @@ allemande = \absolute {
     <b d g,>4 << { b16\repeatTie a16-4( g16 fis16) } \\ { d16\repeatTie s8. } >> g16 d16( e16 fis16 g16 a16 b16 c'16) |
     d'16( b16 g16 fis16 g16 e16 d16 c16) \stemUp b,16( c16 d16 e16 \stemNeutral fis16 g16 a16-1 b16) |
     c'16( a16 g16 fis16) g16( e16 fis16 g16) a,16( d16 fis16 g16) a16-1( b16 c'16 a16) |
-    b16( g16) g16( d16) d16( b,16) b,16( g,16) g,8.\downbow b16\downbow c'16\upbow( b16 a16 g16) |
+    b16( g16) g16( d16) d16( b,16) b,16( g,16) g,8.\downbow b16\upbow c'16( b16 a16) g16 |
     \barNumberCheck #5
     a16-1( b16 c'16) a16 g16-2( fis16 g16) a16 dis8.\trill c'16-4 b16 a16 g16 fis16 |
     g16 e16 e16 b,16 b,16 g,16 g,16 e,16 e,8. b,16 e16 g16 fis16 a16 |
