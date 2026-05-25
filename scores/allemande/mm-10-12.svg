@@ -130,10 +130,10 @@ c-11 7 -24 11 -38 11s-29 -4 -43 -11l54 270v7c0 16 -12 26 -29 26c-7 0 -16 -3 -24 
 <polygon stroke-linejoin="round" stroke-linecap="round" stroke-width="0.0800" fill="currentColor" stroke="currentColor" points="8.9194 0.9900 8.9194 1.3900 0.0400 0.2000 0.0400 -0.2000"/>
 </g>
 <g transform="translate(31.5618, 9.9451)">
-<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="0.0000" x2="21.2130" y2="0.6666"/>
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="0.0000" x2="23.9895" y2="0.6666"/>
 </g>
 <g transform="translate(31.5618, 9.9451)">
-<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="-0.0000" x2="21.2130" y2="-0.6666"/>
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="-0.0000" x2="23.9895" y2="-0.6666"/>
 </g>
 <g transform="translate(20.4559, 6.5785)">
 <polygon stroke-linejoin="round" stroke-linecap="round" stroke-width="0.0800" fill="currentColor" stroke="currentColor" points="9.1694 -0.2000 9.1694 0.2000 0.0400 0.2000 0.0400 -0.2000"/>

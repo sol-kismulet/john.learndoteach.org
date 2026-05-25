@@ -449,10 +449,10 @@ c-5 -10 -14 -15 -23 -15c-14 0 -28 12 -28 27c0 4 1 8 3 13l129 250c2 4 7 6 11 6c18
 <polygon stroke-linejoin="round" stroke-linecap="round" stroke-width="0.0800" fill="currentColor" stroke="currentColor" points="7.3526 0.8000 7.3526 1.2000 0.0400 0.2000 0.0400 -0.2000"/>
 </g>
 <g transform="translate(27.3837, 21.2459)">
-<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="0.0000" x2="18.0795" y2="0.6666"/>
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="0.0000" x2="20.3337" y2="0.6666"/>
 </g>
 <g transform="translate(27.3837, 21.2459)">
-<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="-0.0000" x2="18.0795" y2="-0.6666"/>
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="-0.0000" x2="20.3337" y2="-0.6666"/>
 </g>
 <g transform="translate(18.3669, 17.8793)">
 <polygon stroke-linejoin="round" stroke-linecap="round" stroke-width="0.0800" fill="currentColor" stroke="currentColor" points="7.6026 -0.2000 7.6026 0.2000 0.0400 0.2000 0.0400 -0.2000"/>
