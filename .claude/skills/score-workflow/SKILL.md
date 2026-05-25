@@ -54,6 +54,16 @@ Done a few measures at a time from screen captures of the edition being marked:
 5. Treat each batch as a first pass the user verifies; small marks are
    error-prone. Confirm ambiguous spots (e.g. which note of a chord) before moving on.
 
+## Project standard: hairpins (`\<` / `\>`)
+A crescendo/decrescendo hairpin **begins just before its first note and ends
+just after its last note**. This is enforced globally in `build_scores.py`'s
+`\layout` block via `\override Hairpin.shorten-pair = #'(-1 . -1)` (negative
+values *lengthen* each end), so you do **not** add per-hairpin tweaks — just
+attach `\<` to the start note and terminate with `\!` (or a dynamic like `\p`,
+`\mf`) on the end note. To place the terminating dynamic under the next
+bar line, attach it to the measure's last note and nudge it with
+`\once \override DynamicText.extra-offset = #'(1.5 . 0)`.
+
 ## HARD CONSTRAINT: one measure per line
 `build_scores.py` splits the music **by line = by measure**. Any
 `\set` / `\once` / `\override` must sit on the **same line** as the measure it

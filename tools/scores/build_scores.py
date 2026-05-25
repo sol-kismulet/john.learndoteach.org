@@ -55,7 +55,11 @@ def make_ly(start, end):
     \\set Timing.beatStructure = #'(4 4 4 4)
 {body}
   }}
-  \\layout {{ }}
+  \\layout {{
+    % Project standard: hairpins begin just before their first note and end
+    % just after their last note (negative shorten-pair lengthens each end).
+    \\override Hairpin.shorten-pair = #'(-1 . -1)
+  }}
 }}
 '''
 
