@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.2" width="181.98mm" height="37.30mm" viewBox="-1.1267 0.0000 103.5567 21.2285">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.2" width="181.98mm" height="37.05mm" viewBox="-1.1267 0.0000 103.5567 21.0855">
 <style type="text/css">
 <![CDATA[
 tspan { white-space: pre; }
@@ -424,11 +424,11 @@ c-5 -10 -14 -15 -23 -15c-14 0 -28 12 -28 27c0 4 1 8 3 13l129 250c2 4 7 6 11 6c18
 <g transform="translate(16.3626, 15.6914)">
 <path stroke-width="0.0800" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.8284 -2.2285C1.6921 -2.6008 2.7332 -2.1390 3.0826 -1.2285L3.0826 -1.2285C2.6846 -2.0293 1.6434 -2.4911 0.8284 -2.2285z"/>
 </g>
-<g transform="translate(7.9000, 20.0445)">
-<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="0.6666" x2="2.3722" y2="0.0000"/>
+<g transform="translate(6.9000, 19.9015)">
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="0.6666" x2="4.3722" y2="0.0000"/>
 </g>
-<g transform="translate(7.9000, 20.0445)">
-<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="-0.6666" x2="2.3722" y2="-0.0000"/>
+<g transform="translate(6.9000, 19.9015)">
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="-0.6666" x2="4.3722" y2="-0.0000"/>
 </g>
 <g transform="translate(7.9000, 15.6914)">
 <path stroke-width="0.0800" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.7730 -2.1950C1.8711 -2.7545 3.5978 -2.2546 4.2272 -1.1950L4.2272 -1.1950C3.5644 -2.1393 1.8378 -2.6392 0.7730 -2.1950z"/>
@@ -439,11 +439,11 @@ c-5 -10 -14 -15 -23 -15c-14 0 -28 12 -28 27c0 4 1 8 3 13l129 250c2 4 7 6 11 6c18
 <g transform="translate(7.9000, 18.5014)">
 <polygon stroke-linejoin="round" stroke-linecap="round" stroke-width="0.0800" fill="currentColor" stroke="currentColor" points="6.0484 -0.2000 6.0484 0.2000 0.0400 0.2000 0.0400 -0.2000"/>
 </g>
-<g transform="translate(21.3711, 19.7470)">
-<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="0.0000" x2="23.3421" y2="0.6666"/>
+<g transform="translate(20.3711, 19.7454)">
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="0.0000" x2="25.3421" y2="0.6666"/>
 </g>
-<g transform="translate(21.3711, 19.7470)">
-<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="-0.0000" x2="23.3421" y2="-0.6666"/>
+<g transform="translate(20.3711, 19.7454)">
+<line stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0000" y1="-0.0000" x2="25.3421" y2="-0.6666"/>
 </g>
 <g transform="translate(26.1295, 15.6914)">
 <path stroke-width="0.0800" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill="currentColor" d="M0.8284 -2.2285C1.6921 -2.6008 2.7332 -2.1390 3.0826 -1.2285L3.0826 -1.2285C2.6846 -2.0293 1.6434 -2.4911 0.8284 -2.2285z"/>
@@ -478,7 +478,7 @@ c-5 -10 -14 -15 -23 -15c-14 0 -28 12 -28 27c0 4 1 8 3 13l129 250c2 4 7 6 11 6c18
 <g transform="translate(11.3542, 15.6914)">
 <path transform="scale(0.0040, -0.0040)" d="M218 136c66 0 108 -36 108 -89c0 -89 -113 -183 -218 -183c-66 0 -108 36 -108 89c0 89 113 183 218 183z" fill="currentColor"/>
 </g>
-<g transform="translate(11.2722, 20.6445)">
+<g transform="translate(11.2722, 20.5015)">
 <path transform="scale(0.0040, -0.0040)" d="M161 32c78 0 97 176 97 178c0 18 -7 33 -25 33c-61 0 -102 -124 -102 -173c0 -22 8 -38 30 -38zM-53 141c0 2 51 151 134 151c35 0 59 -21 66 -52c29 31 67 52 103 52c69 0 107 -49 107 -114c0 -118 -105 -186 -159 -186c-53 0 -70 20 -84 20c-7 0 -14 -3 -16 -9l-29 -86
 c-1 -2 -1 -5 -1 -7c0 -37 57 -18 57 -42c0 -7 -4 -14 -13 -14c-3 0 -50 5 -116 5s-112 -5 -115 -5c-9 0 -14 7 -14 14c0 31 87 -1 102 41l102 300c2 7 4 14 4 20c0 8 -2 14 -11 14c-33 0 -63 -60 -79 -97c-5 -12 -15 -17 -24 -17c-8 0 -14 4 -14 12z" fill="currentColor"/>
 </g>
