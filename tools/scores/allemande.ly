@@ -13,12 +13,12 @@ allemande = \context Staff \relative c {
 
   \repeat volta 2 {
     \partial 16 b'16 |
-    \once \set fingeringOrientations = #'(down) <b d, g,-4>4\f~ b16 a( g fis) g( d e fis) g( a b c) |
-    d( b g fis) g( e d c) b( c d e) fis( g a b) |
-    c( a g fis) g( e fis g) a,( d fis g) a( b c a) |
+    <b d, g,>4\f~ b16 a-4( g fis) g( d e fis) g( a b c) |
+    d( b g fis) g( e d c) b( c d e) fis( g a-1 b) |
+    c( a g fis) g( e fis g) a,( d fis g) a-1( b c a) |
     b( g) g( d) d( b) b( g) g8.\downbow b'16\downbow c\upbow( b a g) |
     \barNumberCheck #5
-    a( b c) a g( fis g) a dis,8.\trill c'16 b a g fis |
+    a-1( b c) a g-2( fis g) a dis,8.\trill c'16-4 b a g fis |
     g e e b b g g e e8. b'16 e g fis a |
     g fis e fis g cis g fis g cis e, fis g e a, g' |
     fis8 d16 e fis d g e fis d fis g a b c a |
