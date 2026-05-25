@@ -23,7 +23,7 @@ allemande = \absolute {
     \override DynamicLineSpanner.staff-padding = #3 g16(-#(make-dynamic-script (markup #:normal-text "–")) e16) e16( \once \override DynamicText.extra-offset = #'(-0.5 . 0) b,16)-#(make-dynamic-script (markup #:normal-text #:italic "scen")) b,16( g,16) g,16( \once \override DynamicText.extra-offset = #'(1.2 . 0) e,16)-#(make-dynamic-script (markup #:normal-text "–")) e,8. b,16\downbow e16(-#(make-dynamic-script (markup #:normal-text "–")) \once \override DynamicText.extra-offset = #'(1 . 0) g16-#(make-dynamic-script (markup #:normal-text #:italic "do")) fis16 a16) |
     \once \set fingeringOrientations = #'(up) g16-4\mf( fis16 e16) fis16-. g16( cis'16) g16 fis16 g16( cis'16) e16 fis16 g16( e16 a,16) g16-. |
     \revert DynamicLineSpanner.staff-padding fis8\>( d16\p) e16 fis16( d16) g16\< e16 fis16( d16) fis16 g16 \once \set fingeringOrientations = #'(up) a16-1( b16 c'16) a16\! |
-    b16 d16 g,16 d16 b16 g16 a16 fis16 g16 e16 g16 a16 b16 cis'16 d'16 b16 |
+    b16\p( d16-1 g,16-1 d16 b16) g16-2 a16 fis16 g16\< e16( g16 a16 b16 cis'16 d'16 \once \override DynamicText.extra-offset = #'(1.5 . 0) b16)\mf |
     \barNumberCheck #10
     cis'16 e16 g,16 e16 cis'16 a16 b16 d'16 cis'16 a16 d'16 b16 cis'16 a16 e'16 g16 |
     fis8.\trill d'16 a16 g16 fis16 e16 d16 a16 g16 e16 fis16 d16 a16 c16 |
