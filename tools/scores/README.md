@@ -7,7 +7,8 @@ Renders the per-loop SVG scores in `scores/` from LilyPond sources in this direc
   the community LilyPond typeset at
   [babysnakes/Bach---Cello-Suites](https://github.com/babysnakes/Bach---Cello-Suites)
   (Bärenreiter-based), with editorial slurs, bow markings and trills added
-  by hand to follow the Peters/Becker edition.
+  by hand to follow the Peters/Becker edition. Written in **absolute octaves**
+  (not `\relative`) so each measure is self-contained.
 
 ## Build
 Requires LilyPond on `$PATH`. Run `tools/scores/setup.sh` to install it if
@@ -26,10 +27,11 @@ its `label` (e.g. `"mm 4-6"`), extracts those measures from the matching
 LilyPond source, and writes the cropped SVG to the path in the loop's
 `score` field.
 
-For ranges that don't start at m. 1, the earlier measures are emitted inside
-`\set Score.skipTypesetting = ##t` so LilyPond parses them silently —
-necessary because the source uses `\relative` notation and slicing measures
-out of context shifts later pitches by an octave or more.
+The source is in **absolute octaves**, so every measure renders on its own —
+ranges that don't start at m. 1 simply set `Score.currentBarNumber`, with no
+need to parse earlier measures for pitch context. (This replaced an older
+`\relative` + `skipTypesetting` scheme whose octave context drifted whenever a
+measure used polyphony.)
 
 ### One measure per line (important)
 The splitter treats **each line of the music as one measure**. Keep one measure

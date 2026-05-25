@@ -27,9 +27,12 @@ on Claude Code on the web the `SessionStart` hook (`.claude/`) runs it
 automatically. To check: `lilypond --version`.
 
 ## Getting the notes (IMSLP)
-Transcribe pitches and rhythms from the public-domain IMSLP edition into a
-`\relative` LilyPond source. Record the edition/source in `tools/scores/README.md`.
-Keep **one measure per line** (see the hard constraint below).
+Transcribe pitches and rhythms from the public-domain IMSLP edition into an
+**absolute-octave** LilyPond source (`\absolute`, not `\relative`). Absolute
+octaves keep each measure self-contained, so polyphony or a voice split never
+shifts the octave of later notes — the bug class that plagued the relative
+source. Record the edition/source in `tools/scores/README.md`. Keep **one
+measure per line** (see the hard constraint below).
 
 ## Adding notations (fingerings, slurs, dynamics, …)
 Done a few measures at a time from screen captures of the edition being marked:

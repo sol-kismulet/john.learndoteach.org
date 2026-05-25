@@ -30,16 +30,13 @@ def parse_range(label):
     return int(nums[0]), int(nums[1])
 
 def make_ly(start, end):
+    # The source is in absolute octaves, so each measure stands alone — no
+    # \relative context and no skipTypesetting of earlier measures needed.
     visible = '\n'.join('    ' + m for m in measures[start-1:end])
     if start == 1:
         body = f'    {pickup}\n{visible}'
     else:
-        hidden = '\n'.join('    ' + m for m in measures[:start-1])
-        body = (f'    \\set Score.skipTypesetting = ##t\n'
-                f'    {pickup}\n{hidden}\n'
-                f'    \\set Score.skipTypesetting = ##f\n'
-                f'    \\set Score.currentBarNumber = #{start}\n'
-                f'    \\bar ""\n{visible}')
+        body = f'    \\set Score.currentBarNumber = #{start}\n{visible}'
     return f'''\\version "2.24.0"
 \\paper {{
   indent = 0
@@ -50,10 +47,12 @@ def make_ly(start, end):
 }}
 \\header {{ tagline = "" }}
 \\score {{
-  \\new Staff \\with {{ \\remove "Time_signature_engraver" }} \\relative c {{
+  \\new Staff \\with {{ \\remove "Time_signature_engraver" }} {{
     \\clef "bass"
     \\key g \\major
     \\time 2/2
+    \\set Timing.baseMoment = #(ly:make-moment 1/16)
+    \\set Timing.beatStructure = #'(4 4 4 4)
 {body}
   }}
   \\layout {{ }}
