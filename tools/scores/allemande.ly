@@ -25,7 +25,7 @@ allemande = \absolute {
     \revert DynamicLineSpanner.staff-padding fis8\>( d16\p) e16 fis16( d16) g16\< e16 fis16( d16) fis16 g16 \once \set fingeringOrientations = #'(up) a16-1( b16 c'16) a16\! |
     b16\p( d16-1 g,16-1 d16 b16) g16-2 a16 fis16 g16\< e16( g16 a16 b16 cis'16 d'16 \once \override DynamicText.extra-offset = #'(1.5 . 0) b16)\mf |
     \barNumberCheck #10
-    cis'16( e16 g,16 e16 cis'16) a16\p b16 d'16 cis'16\< a16( d'16 b16 cis'16 a16 e'16-4\! g16) |
+    cis'16( e16 g,16 e16 cis'16) a16\p b16 d'16 cis'16\< a16( d'16 b16 cis'16 a16 e'16-4 g16)\! |
     fis8.\trill d'16 a16 g16 fis16 e16 d16 a16 g16 e16 fis16 d16 a16 c16 |
     b,8.\trill g16 d16 c16 b,16 a,16 g,16 d16 c16 a,16 b,16 g,16 d16 fis,16 |
     e,16 g,16 a,16 b,16 cis16 d16 e16 fis16 g16 a16 cis'16 d'16 e'16 a16 g'8 |
