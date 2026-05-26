@@ -27,7 +27,7 @@ allemande = \absolute {
     \barNumberCheck #10
     cis'16( e16 g,16 e16 cis'16) a16\p b16 d'16 cis'16\< a16( d'16 b16 cis'16 a16 e'16-4 g16)\! |
     fis8.\trill\mf d'16 a16 g16 fis16 e16 d16( a16-4) g16 e16 fis16( d16) a16-4 c!16 | %% Peters: cautionary natural on final c
-    b,8.\trill g16 d16 c16 b,16 a,16 g,16 d16 c16 a,16 b,16 g,16 d16 fis,16 |
+    b,8.\trill g16 d16 c16 b,16\> a,16 g,16( d16-4) c16-4 a,16 b,16( g,16) d16-4 fis,16\! |
     e,16 g,16 a,16 b,16 cis16 d16 e16 fis16 g16 a16 cis'16 d'16 e'16 a16 g'8 |
     d16 g'16 fis'16 e'16 fis'16 d'16 a16 d'16 d16 fis16 a16 c'16 b8.\trill a16 |
     \barNumberCheck #15
