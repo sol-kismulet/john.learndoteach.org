@@ -336,6 +336,19 @@ const AudioKit = (() => {
       held.clear();
     }
 
+    // iOS won't produce sound until the context is resumed inside a user
+    // gesture; a one-sample silent buffer reliably kick-starts output. Call
+    // this from the first touch/click so later notes actually sound.
+    function unlock() {
+      ensure();
+      try {
+        const src = ctx.createBufferSource();
+        src.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+        src.connect(ctx.destination);
+        src.start(0);
+      } catch (e) {}
+    }
+
     // Game-show "wrong answer" buzzer: two clashing detuned saws that slide
     // down at the end for that deflating "ahhght".
     function buzzer() {
@@ -361,7 +374,7 @@ const AudioKit = (() => {
     }
 
     return {
-      noteOn, noteOff, allOff, buzzer,
+      noteOn, noteOff, allOff, buzzer, unlock,
       setInstrument(name) { instrument = name === 'cello' ? 'cello' : 'piano'; },
       setFifth(on) { fifthOn = !!on; },
     };
