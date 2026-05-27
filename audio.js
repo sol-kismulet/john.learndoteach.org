@@ -39,6 +39,31 @@ const AudioKit = (() => {
   // them instead of layering a second scale on top of the first.
   let activeVoices = [];
 
+  // --- keeping audio awake ---------------------------------------------------
+  // Browsers suspend an AudioContext when the tab/app is backgrounded; iOS goes
+  // further and puts it in an "interrupted" state. Either way it stays silent
+  // until resumed, which is why sound dies after switching apps and only comes
+  // back on reload. Every context the kit creates is tracked here and re-resumed
+  // whenever the page returns to the foreground or the user next interacts, so
+  // any page using AudioKit recovers without a per-page handler.
+  const liveContexts = new Set();
+  function track(ctx) { liveContexts.add(ctx); return ctx; }
+  function resumeContexts() {
+    liveContexts.forEach(ctx => {
+      try {
+        if (ctx.state === 'closed') { liveContexts.delete(ctx); return; }
+        if (ctx.state !== 'running') ctx.resume();
+      } catch (e) {}
+    });
+  }
+  if (typeof window !== 'undefined') {
+    ['pointerdown', 'touchstart', 'mousedown', 'keydown'].forEach(ev =>
+      window.addEventListener(ev, resumeContexts, true));
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) resumeContexts();
+    });
+  }
+
   // Stop the current scale: cancel pending visual callbacks and fade out any
   // scheduled oscillators. Safe to call when nothing is playing.
   function stopSequence() {
@@ -77,7 +102,7 @@ const AudioKit = (() => {
   // Current audio-clock time (creates the shared context if needed). Lets the
   // caller schedule contiguous loop passes against the same timeline.
   function currentTime() {
-    if (!seqCtx) seqCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!seqCtx) seqCtx = track(new (window.AudioContext || window.webkitAudioContext)());
     return seqCtx.currentTime;
   }
 
@@ -91,8 +116,8 @@ const AudioKit = (() => {
   // looping). Returns the audio-clock time the next contiguous note would start
   // (= start + seq.length * step), so a loop can schedule the next pass exactly.
   function playSequence(baseMidi, seq, opts = {}) {
-    if (!seqCtx) seqCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (seqCtx.state === 'suspended') { try { seqCtx.resume(); } catch (e) {} }
+    if (!seqCtx) seqCtx = track(new (window.AudioContext || window.webkitAudioContext)());
+    if (seqCtx.state !== 'running') { try { seqCtx.resume(); } catch (e) {} }
     const ctx = seqCtx;
     const step = opts.step != null ? opts.step : 0.42;
     const gate = Math.max(opts.gate != null ? opts.gate : step * 0.92, 0.04);
@@ -151,8 +176,8 @@ const AudioKit = (() => {
 
     function start() {
       if (nodes) return;
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      if (ctx.state === 'suspended') ctx.resume();
+      const ctx = track(new (window.AudioContext || window.webkitAudioContext)());
+      if (ctx.state !== 'running') ctx.resume();
       const root = midiToFreq(rootMidi);
 
       const rootOsc = ctx.createOscillator();
@@ -239,7 +264,7 @@ const AudioKit = (() => {
 
     function ensure() {
       if (!ctx) {
-        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        ctx = track(new (window.AudioContext || window.webkitAudioContext)());
         master = ctx.createGain();
         master.gain.value = 0.85;
         // Soft knee so dense chords don't clip.
