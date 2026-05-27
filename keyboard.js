@@ -8,15 +8,16 @@ const synth = AudioKit.createPolySynth();
 const kbd = document.getElementById('keyboard');
 const now = document.getElementById('now');
 
-// iOS gates Web Audio behind a user gesture: unlock the context on the very
-// first interaction anywhere (capture phase, so it runs before play handlers).
-function unlockAudio() {
-  synth.unlock();
-  ['pointerdown', 'touchstart', 'mousedown', 'keydown'].forEach(ev =>
-    window.removeEventListener(ev, unlockAudio, true));
-}
+// iOS gates Web Audio behind a user gesture and suspends/"interrupts" the
+// context whenever the page is backgrounded. Resume it on every interaction
+// (capture phase, before play handlers) and when the tab becomes visible
+// again, so sound keeps working without a refresh.
+function resumeAudio() { synth.unlock(); }
 ['pointerdown', 'touchstart', 'mousedown', 'keydown'].forEach(ev =>
-  window.addEventListener(ev, unlockAudio, true));
+  window.addEventListener(ev, resumeAudio, true));
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) synth.unlock();
+});
 
 // Low..high MIDI (inclusive), all starting/ending on C except the 88-key full
 // range (A0–C8). Larger ranges grow downward then upward around middle C.

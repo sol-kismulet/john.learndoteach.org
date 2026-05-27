@@ -247,7 +247,9 @@ const AudioKit = (() => {
         master.connect(comp);
         comp.connect(ctx.destination);
       }
-      if (ctx.state === 'suspended') { try { ctx.resume(); } catch (e) {} }
+      // iOS uses an "interrupted" state after backgrounding, not just
+      // "suspended" — resume whenever it isn't actively running.
+      if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
       return ctx;
     }
 
