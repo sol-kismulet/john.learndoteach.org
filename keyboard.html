@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>keyboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: "Cormorant Garamond", serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 2.5rem 1rem 4rem;
+      box-sizing: border-box;
+    }
+    a { color: #9cd8ff; }
+    .back {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      font-size: 1rem;
+      color: #666;
+      text-decoration: none;
+    }
+    .back:hover { color: #d8d8ff; }
+
+    h1 {
+      margin: 0;
+      font-size: 2.2rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: lowercase;
+    }
+    .hint {
+      margin: -0.5rem 0 0;
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.5);
+      font-style: italic;
+      text-align: center;
+    }
+
+    .now {
+      font-size: 1.5rem;
+      letter-spacing: 0.04em;
+      min-height: 1.5em;
+      color: #9cd8ff;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.7rem 1.4rem;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.6);
+    }
+    .ctl { display: inline-flex; align-items: center; gap: 0.5em; }
+    .ctl select {
+      background: #000;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 0.2em 0.35em;
+    }
+    .ctl select:hover { border-color: #9cd8ff; }
+
+    .switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45em;
+      cursor: pointer;
+      user-select: none;
+    }
+    .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .switch .track {
+      width: 2.4em;
+      height: 1.2em;
+      border: 1px solid #666;
+      border-radius: 1em;
+      position: relative;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .switch .thumb {
+      position: absolute;
+      top: 50%;
+      left: 0.15em;
+      width: 0.9em;
+      height: 0.9em;
+      transform: translateY(-50%);
+      background: #ddd;
+      border-radius: 50%;
+      transition: left 0.15s, background 0.15s;
+    }
+    .switch input:checked + .track { background: #2f6f8f; border-color: #9cd8ff; }
+    .switch input:checked + .track .thumb { left: calc(100% - 1.05em); background: #9cd8ff; }
+
+    .kbd-wrap {
+      width: 100%;
+      max-width: 960px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .keyboard {
+      display: flex;
+      align-items: flex-start;
+      height: 180px;
+      min-width: min-content;
+      margin: 0 auto;
+      touch-action: none;
+    }
+    .key { position: relative; box-sizing: border-box; }
+    .white {
+      flex: 1 0 34px;
+      height: 100%;
+      background: linear-gradient(#fafafa, #e6e6e6);
+      border: 1px solid #2a2a2a;
+      border-radius: 0 0 5px 5px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .black {
+      position: absolute;
+      top: 0;
+      right: -32%;
+      width: 64%;
+      height: 62%;
+      background: linear-gradient(#2a2a2a, #000);
+      border: 1px solid #000;
+      border-radius: 0 0 4px 4px;
+      z-index: 2;
+    }
+    .white.on { background: linear-gradient(#bfe6ff, #9cd8ff); }
+    .black.on { background: linear-gradient(#6fb4d6, #2f6f8f); }
+    .label {
+      font-size: 0.72rem;
+      color: #777;
+      pointer-events: none;
+      padding-bottom: 7px;
+      display: none;
+    }
+    .label.tonic { display: block; color: #555; }
+    .keyboard.show-labels .label { display: block; }
+
+    @media (max-width: 600px) {
+      .keyboard { height: 150px; }
+      .white { flex: 1 0 26px; }
+    }
+  </style>
+</head>
+<body>
+  <a class="back" href="index.html">← back</a>
+
+  <h1>keyboard</h1>
+  <p class="hint">click, tap, or play with your computer keyboard (a&ndash;k row); z / x shift octave</p>
+
+  <div class="controls">
+    <label class="ctl">
+      range
+      <select id="range">
+        <option value="1">1 octave</option>
+        <option value="2" selected>2 octaves</option>
+        <option value="3">3 octaves</option>
+        <option value="4">4 octaves</option>
+        <option value="5">5 octaves</option>
+        <option value="6">6 octaves</option>
+        <option value="7">7 octaves</option>
+        <option value="full">full (88 keys)</option>
+      </select>
+    </label>
+    <label class="ctl">
+      tone
+      <select id="tone">
+        <option value="piano" selected>piano</option>
+        <option value="cello">cello</option>
+      </select>
+    </label>
+    <label class="switch">
+      <input id="fifth" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      add 5th
+    </label>
+    <label class="switch">
+      <input id="labels" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      note names
+    </label>
+  </div>
+
+  <div class="now" id="now">&nbsp;</div>
+
+  <div class="kbd-wrap">
+    <div class="keyboard" id="keyboard"></div>
+  </div>
+
+  <script src="audio.js"></script>
+  <script src="keyboard.js"></script>
+</body>
+</html>

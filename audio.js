@@ -223,5 +223,125 @@ const AudioKit = (() => {
     };
   }
 
-  return { FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName, playSequence, stopSequence, currentTime, createDrone };
+  // Polyphonic, press-and-hold synth for the virtual keyboard. Two timbres:
+  // 'piano' (struck string: bright attack, decaying tail) and 'cello' (bowed:
+  // sustained, reuses the shared cello voice). With the fifth toggle on, every
+  // note also sounds the pitch seven semitones above — a *tempered* fifth
+  // (equal-tempered, ratio 2^(7/12) ≈ 1.498), not the just 3:2 the drone uses.
+  function createPolySynth() {
+    let ctx = null, master = null;
+    let instrument = 'piano';
+    let fifthOn = false;
+    let pianoWave = null;
+    // midi -> { count, voices }. count tracks how many inputs (pointers, keys)
+    // are holding the note so overlapping presses don't cut each other off.
+    const held = new Map();
+
+    function ensure() {
+      if (!ctx) {
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        master = ctx.createGain();
+        master.gain.value = 0.85;
+        // Soft knee so dense chords don't clip.
+        const comp = ctx.createDynamicsCompressor();
+        master.connect(comp);
+        comp.connect(ctx.destination);
+      }
+      if (ctx.state === 'suspended') { try { ctx.resume(); } catch (e) {} }
+      return ctx;
+    }
+
+    function getPianoWave() {
+      if (!pianoWave) {
+        const real = new Float32Array([0, 1, 0.62, 0.42, 0.28, 0.19, 0.13, 0.09, 0.06, 0.04, 0.028, 0.02]);
+        pianoWave = ctx.createPeriodicWave(real, new Float32Array(real.length));
+      }
+      return pianoWave;
+    }
+
+    function pianoVoice(freq, now) {
+      const osc = ctx.createOscillator();
+      osc.setPeriodicWave(getPianoWave());
+      osc.frequency.value = freq;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = Math.min(freq * 7 + 800, 12000); lp.Q.value = 0.4;
+      const gain = ctx.createGain();
+      const peak = 0.22;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(peak, now + 0.005);
+      gain.gain.exponentialRampToValueAtTime(peak * 0.3, now + 0.5);
+      gain.gain.setTargetAtTime(0.0001, now + 0.5, 2.5); // slow tail while held
+      osc.connect(lp); lp.connect(gain); gain.connect(master);
+      osc.start(now);
+      return { gain, oscs: [osc], release: 0.18 };
+    }
+
+    function celloVoice(freq, now) {
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth'; osc.frequency.value = freq;
+      const voice = celloFilters(ctx);
+      const gain = ctx.createGain();
+      const peak = 0.16;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(peak, now + 0.09);       // bow attack
+      gain.gain.setTargetAtTime(peak * 0.82, now + 0.09, 0.4);   // settle to sustain
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      lfo.frequency.value = 5;
+      lfoGain.gain.setValueAtTime(0.0001, now);
+      lfoGain.gain.linearRampToValueAtTime(freq * 0.006, now + 0.6); // vibrato fades in
+      lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
+      osc.connect(voice.input); voice.output.connect(gain); gain.connect(master);
+      osc.start(now); lfo.start(now);
+      return { gain, oscs: [osc, lfo], release: 0.15 };
+    }
+
+    function makeVoice(midi) {
+      const freq = midiToFreq(midi);
+      const now = ctx.currentTime;
+      return instrument === 'cello' ? celloVoice(freq, now) : pianoVoice(freq, now);
+    }
+
+    function stopVoice(v) {
+      const t = ctx.currentTime;
+      try {
+        v.gain.gain.cancelScheduledValues(t);
+        if (v.gain.gain.cancelAndHoldAtTime) v.gain.gain.cancelAndHoldAtTime(t);
+        else v.gain.gain.setValueAtTime(Math.max(v.gain.gain.value, 0.0001), t);
+        v.gain.gain.setTargetAtTime(0.0001, t, v.release);
+        const end = t + v.release * 8 + 0.1;
+        v.oscs.forEach(o => { try { o.stop(end); } catch (e) {} });
+      } catch (e) {}
+    }
+
+    function noteOn(midi) {
+      ensure();
+      const entry = held.get(midi);
+      if (entry) { entry.count++; return; }
+      const voices = [makeVoice(midi)];
+      if (fifthOn) voices.push(makeVoice(midi + 7)); // tempered fifth: +7 semitones
+      held.set(midi, { count: 1, voices });
+    }
+
+    function noteOff(midi) {
+      const entry = held.get(midi);
+      if (!entry) return;
+      if (--entry.count > 0) return;
+      entry.voices.forEach(stopVoice);
+      held.delete(midi);
+    }
+
+    function allOff() {
+      held.forEach(entry => entry.voices.forEach(stopVoice));
+      held.clear();
+    }
+
+    return {
+      noteOn, noteOff, allOff,
+      setInstrument(name) { instrument = name === 'cello' ? 'cello' : 'piano'; },
+      setFifth(on) { fifthOn = !!on; },
+    };
+  }
+
+  return { FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName, playSequence, stopSequence, currentTime, createDrone, createPolySynth };
 })();
