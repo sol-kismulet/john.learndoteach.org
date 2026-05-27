@@ -156,6 +156,43 @@
       .keyboard { height: 150px; }
       .white { flex: 1 0 26px; }
     }
+
+    .test {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.7rem 1rem;
+      font-size: 0.95rem;
+    }
+    button {
+      background: none;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.4em 0.8em;
+      cursor: pointer;
+    }
+    button:hover { border-color: #9cd8ff; color: #fff; }
+    .test-msg { color: rgba(255, 255, 255, 0.7); font-style: italic; }
+    .test-msg.win { color: #8cff9c; font-style: normal; }
+    .test-msg.lose { color: #ff7a9c; font-style: normal; }
+    .test-score { color: #9cd8ff; }
+
+    .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 50; }
+    .confetti i {
+      position: absolute;
+      top: -5vh;
+      width: 8px;
+      height: 13px;
+      background: var(--c);
+      opacity: 0.9;
+      animation: confetti-fall linear forwards;
+    }
+    @keyframes confetti-fall {
+      to { transform: translate(var(--dx), 110vh) rotate(var(--rot)); opacity: 0.5; }
+    }
   </style>
 </head>
 <body>
@@ -201,6 +238,13 @@
 
   <div class="kbd-wrap">
     <div class="keyboard" id="keyboard"></div>
+  </div>
+
+  <div class="test">
+    <button id="test-btn" type="button">test my pitch</button>
+    <button id="replay-btn" type="button" hidden>replay</button>
+    <span id="test-msg" class="test-msg"></span>
+    <span id="test-score" class="test-score"></span>
   </div>
 
   <script src="audio.js"></script>

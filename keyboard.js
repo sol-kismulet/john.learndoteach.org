@@ -61,6 +61,7 @@ function keyEl(midi) {
 }
 
 function press(midi) {
+  if (awaitingGuess) guess(midi); // first press during a pitch test is the answer
   synth.noteOn(midi);
   const el = keyEl(midi);
   if (el) el.classList.add('on');
@@ -161,5 +162,74 @@ document.getElementById('fifth').addEventListener('change', e => synth.setFifth(
 document.getElementById('labels').addEventListener('change', e => {
   kbd.classList.toggle('show-labels', e.target.checked);
 });
+
+// --- Pitch test (ear training) ----------------------------------------------
+// Play a random pitch from the current range; the first key the player presses
+// is their guess. Right note name (any octave) = confetti; wrong = buzzer.
+const testBtn = document.getElementById('test-btn');
+const replayBtn = document.getElementById('replay-btn');
+const testMsg = document.getElementById('test-msg');
+const testScore = document.getElementById('test-score');
+
+let targetMidi = null;
+let awaitingGuess = false;
+let correct = 0, total = 0;
+let playTimer = null;
+
+function playTarget() {
+  clearTimeout(playTimer);
+  synth.noteOff(targetMidi);
+  synth.noteOn(targetMidi);
+  playTimer = setTimeout(() => synth.noteOff(targetMidi), 1300);
+}
+
+function startRound() {
+  targetMidi = lowMidi + Math.floor(Math.random() * (highMidi - lowMidi + 1));
+  awaitingGuess = true;
+  testMsg.textContent = 'listen, then press the key you heard';
+  testMsg.className = 'test-msg';
+  replayBtn.hidden = false;
+  testBtn.textContent = 'new note';
+  playTarget();
+}
+
+function guess(midi) {
+  awaitingGuess = false;
+  total++;
+  const answer = AudioKit.midiToName(targetMidi, false);
+  if (pcOf(midi) === pcOf(targetMidi)) {
+    correct++;
+    testMsg.textContent = 'correct — it was ' + answer;
+    testMsg.className = 'test-msg win';
+    confetti();
+  } else {
+    testMsg.textContent = 'nope — that was ' + AudioKit.midiToName(midi, false) + ', it was ' + answer;
+    testMsg.className = 'test-msg lose';
+    synth.buzzer();
+  }
+  replayBtn.hidden = true;
+  testScore.textContent = 'score: ' + Math.round(correct / total * 100) + '% (' + correct + '/' + total + ')';
+}
+
+function confetti() {
+  const colors = ['#9cd8ff', '#ffd86f', '#ff7a9c', '#8cff9c', '#c89cff', '#ffffff'];
+  const box = document.createElement('div');
+  box.className = 'confetti';
+  for (let i = 0; i < 80; i++) {
+    const p = document.createElement('i');
+    p.style.setProperty('--c', colors[i % colors.length]);
+    p.style.setProperty('--dx', (Math.random() * 2 - 1) * 30 + 'vw');
+    p.style.setProperty('--rot', Math.round(Math.random() * 720 - 360) + 'deg');
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.animationDelay = Math.random() * 0.2 + 's';
+    p.style.animationDuration = 1.2 + Math.random() * 0.9 + 's';
+    box.appendChild(p);
+  }
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 2400);
+}
+
+testBtn.addEventListener('click', startRound);
+replayBtn.addEventListener('click', playTarget);
 
 build('2');

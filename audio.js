@@ -336,8 +336,32 @@ const AudioKit = (() => {
       held.clear();
     }
 
+    // Game-show "wrong answer" buzzer: two clashing detuned saws that slide
+    // down at the end for that deflating "ahhght".
+    function buzzer() {
+      ensure();
+      const t = ctx.currentTime;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = 1;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.3, t + 0.02);
+      g.gain.setValueAtTime(0.3, t + 0.32);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+      lp.connect(g); g.connect(master);
+      [150, 159].forEach(f0 => {
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(f0, t);
+        o.frequency.setValueAtTime(f0, t + 0.3);
+        o.frequency.linearRampToValueAtTime(f0 * 0.85, t + 0.55);
+        o.connect(lp);
+        o.start(t); o.stop(t + 0.6);
+      });
+    }
+
     return {
-      noteOn, noteOff, allOff,
+      noteOn, noteOff, allOff, buzzer,
       setInstrument(name) { instrument = name === 'cello' ? 'cello' : 'piano'; },
       setFifth(on) { fifthOn = !!on; },
     };
