@@ -42,21 +42,49 @@ const FLAT_POS_TREBLE = [4, 7, 3, 6, 2, 5, 1];
 // letterSteps: how many letter-names above the tonic each degree spans, so notes
 // spell correctly (A♭ Dorian's 3rd is C♭, not B). Omitted = no diatonic spelling
 // (chromatic), falls back to sharps/flats by key.
+// sigOffset: the row's key signature = tonal-center major signature + sigOffset.
+// The seven diatonic modes each sit a fixed number of fifths from the parallel
+// major (Lydian +1 … Locrian −5). Harmonic/melodic minor and minor pentatonic
+// borrow the natural-minor signature (−3) and show their raised/altered tones as
+// accidentals, per standard practice. noKey: the scale has no diatonic home
+// (whole tone, chromatic) — drawn with an empty signature and all accidentals.
 const MODES = [
-  { name: 'Ionian (major)',          basicName: 'Major',         group: 'basic', intervals: [0, 2, 4, 5, 7, 9, 11, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
-  { name: 'Melodic minor',           basicName: 'Melodic minor', group: 'basic', intervals: [0, 2, 3, 5, 7, 9, 11, 12], descIntervals: [0, 2, 3, 5, 7, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
-  { name: 'Aeolian (natural minor)', basicName: 'Natural minor', group: 'basic', intervals: [0, 2, 3, 5, 7, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
-  { name: 'Dorian',                  group: 'mode',  intervals: [0, 2, 3, 5, 7, 9, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
-  { name: 'Phrygian',                group: 'mode',  intervals: [0, 1, 3, 5, 7, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
-  { name: 'Lydian',                  group: 'mode',  intervals: [0, 2, 4, 6, 7, 9, 11, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
-  { name: 'Mixolydian',              group: 'mode',  intervals: [0, 2, 4, 5, 7, 9, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
-  { name: 'Locrian',                 group: 'mode',  intervals: [0, 1, 3, 5, 6, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
-  { name: 'Harmonic minor',          group: 'other', intervals: [0, 2, 3, 5, 7, 8, 11, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
-  { name: 'Major pentatonic',        group: 'other', intervals: [0, 2, 4, 7, 9, 12], letterSteps: [0, 1, 2, 4, 5, 7] },
-  { name: 'Minor pentatonic',        group: 'other', intervals: [0, 3, 5, 7, 10, 12], letterSteps: [0, 2, 3, 4, 6, 7] },
-  { name: 'Whole tone',              group: 'other', intervals: [0, 2, 4, 6, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 7] },
-  { name: 'Chromatic',               group: 'other', intervals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
+  { name: 'Ionian (major)',          basicName: 'Major',         group: 'basic', sigOffset: 0,  intervals: [0, 2, 4, 5, 7, 9, 11, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Melodic minor',           basicName: 'Melodic minor', group: 'basic', sigOffset: -3, intervals: [0, 2, 3, 5, 7, 9, 11, 12], descIntervals: [0, 2, 3, 5, 7, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Aeolian (natural minor)', basicName: 'Natural minor', group: 'basic', sigOffset: -3, intervals: [0, 2, 3, 5, 7, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Dorian',                  group: 'mode',  sigOffset: -2, intervals: [0, 2, 3, 5, 7, 9, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Phrygian',                group: 'mode',  sigOffset: -4, intervals: [0, 1, 3, 5, 7, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Lydian',                  group: 'mode',  sigOffset: 1,  intervals: [0, 2, 4, 6, 7, 9, 11, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Mixolydian',              group: 'mode',  sigOffset: -1, intervals: [0, 2, 4, 5, 7, 9, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Locrian',                 group: 'mode',  sigOffset: -5, intervals: [0, 1, 3, 5, 6, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Harmonic minor',          group: 'other', sigOffset: -3, intervals: [0, 2, 3, 5, 7, 8, 11, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { name: 'Major pentatonic',        group: 'other', sigOffset: 0,  intervals: [0, 2, 4, 7, 9, 12], letterSteps: [0, 1, 2, 4, 5, 7] },
+  { name: 'Minor pentatonic',        group: 'other', sigOffset: -3, intervals: [0, 3, 5, 7, 10, 12], letterSteps: [0, 2, 3, 4, 6, 7] },
+  { name: 'Whole tone',              group: 'other', noKey: true,   intervals: [0, 2, 4, 6, 8, 10, 12], letterSteps: [0, 1, 2, 3, 4, 5, 7] },
+  { name: 'Chromatic',               group: 'other', noKey: true,   intervals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
 ];
+
+// --- per-row key signature -----------------------------------------------
+// Each mode is engraved with its own key signature, not the tonal center's
+// major one. A signature never exceeds 7 accidentals: a music professor writes
+// A♭ Phrygian (8 flats) as G♯ Phrygian (4 sharps), so when the count would spill
+// past 7 we respell the tonic enharmonically. Respelling a tonic ♭→♯ shifts the
+// signature by +12 fifths (e.g. A♭ major −4 → G♯ major +8); ♯→♭ shifts by −12.
+const ENHARM_SHARP = { Cb: 'B', Db: 'C#', Eb: 'D#', Fb: 'E', Gb: 'F#', Ab: 'G#', Bb: 'A#' };
+const ENHARM_FLAT  = { 'C#': 'Db', 'D#': 'Eb', 'E#': 'F', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb', 'B#': 'C' };
+
+const prettyRoot = (r) => r.replace('b', '♭').replace('#', '♯');
+
+// Returns { sig, root, label } for `mode` built on the current tonal center.
+function modeKey(mode) {
+  const center = CIRCLE[selectedIndex];
+  if (mode.noKey) return { sig: 0, root: center.root, label: center.label };
+  let sig = center.sig + (mode.sigOffset || 0);
+  let root = center.root;
+  while (sig < -7) { sig += 12; root = ENHARM_SHARP[root] || root; }
+  while (sig > 7)  { sig -= 12; root = ENHARM_FLAT[root]  || root; }
+  return { sig, root, label: prettyRoot(root) };
+}
 
 // --- note spelling -------------------------------------------------------
 // Spell scale notes by letter name so accidentals are correct for the key
@@ -97,9 +125,9 @@ function buildSpellMap(root, mode) {
 }
 
 // Returns a function semi -> displayed note name for the given tonal center/scale.
-function makeNamer(root, mode) {
+function makeNamer(root, mode, sig) {
   const base = pitchToMidi(root, 4);
-  const preferFlats = CIRCLE[selectedIndex].sig < 0;
+  const preferFlats = sig < 0;
   const map = buildSpellMap(root, mode);
   return (semi) => {
     const pc = ((base + semi) % 12 + 12) % 12;
@@ -239,7 +267,7 @@ function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaf
       if (rowReadout) rowReadout.textContent = name;
       if (rowStaff) {
         const treble = document.getElementById('toggle-treble').checked;
-        const sig = CIRCLE[selectedIndex].sig;
+        const sig = parseInt(rowStaff.dataset.sig, 10) || 0;
         highlightOnStaff(rowStaff, baseMidi + semi, name, sig, treble);
       }
     },
@@ -388,6 +416,7 @@ function makeRowStaff(sig, treble) {
   svg.setAttribute('class', 'row-staff');
   svg.setAttribute('viewBox', `0 0 ${ROW_STAFF.width} ${ROW_STAFF.height}`);
   svg.setAttribute('aria-hidden', 'true');
+  svg.dataset.sig = sig; // each row keeps its own signature (modes differ)
   renderStaff(svg, sig, treble);
   return svg;
 }
@@ -489,11 +518,7 @@ function addLedger(parent, x, y) {
 
 function buildModes() {
   stopPlayback(); // rebuilding replaces the buttons; don't leave an orphan scale
-  const root = CIRCLE[selectedIndex].root;
-  const label = CIRCLE[selectedIndex].label;
-  const sig = CIRCLE[selectedIndex].sig;
   const treble = document.getElementById('toggle-treble').checked;
-  const base = pitchToMidi(root, 4);
   const wrap = document.getElementById('modes');
   wrap.innerHTML = '';
   const list = showExtra ? MODES : MODES.filter(m => m.group === 'basic');
@@ -506,6 +531,10 @@ function buildModes() {
       wrap.appendChild(h);
     }
     lastGroup = mode.group;
+    // Each mode carries its own key signature and (when respelled past 7
+    // accidentals) its own tonic spelling.
+    const { sig, root, label } = modeKey(mode);
+    const base = pitchToMidi(root, 4);
     const row = document.createElement('div');
     row.className = 'mode-row';
     const name = document.createElement('span');
@@ -523,7 +552,7 @@ function buildModes() {
     readout.className = 'note-readout';
     staffNote.append(staff, readout);
     name.append(labelEl, staffNote);
-    const namer = makeNamer(root, mode); // spells this scale's notes correctly
+    const namer = makeNamer(root, mode, sig); // spells this scale's notes correctly
     const asc = document.createElement('button');
     asc.type = 'button';
     asc.append(makeArrow(autoDescend ? '▲▼' : '▲'), makeLabel(autoDescend ? 'up + down' : 'ascending'));
@@ -646,9 +675,9 @@ function initViewToggles() {
   keysig.addEventListener('change', applyKeysig);
 
   document.getElementById('toggle-treble').addEventListener('change', () => {
-    const ks = CIRCLE[selectedIndex].sig;
     const treble = document.getElementById('toggle-treble').checked;
-    document.querySelectorAll('.row-staff').forEach(s => renderStaff(s, ks, treble));
+    document.querySelectorAll('.row-staff').forEach(s =>
+      renderStaff(s, parseInt(s.dataset.sig, 10) || 0, treble));
   });
 }
 
