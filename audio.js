@@ -39,6 +39,32 @@ const AudioKit = (() => {
   // them instead of layering a second scale on top of the first.
   let activeVoices = [];
 
+  // Track every live AudioContext so we can resume them after an interruption.
+  // iOS suspends audio on screen lock / phone calls and leaves the context in
+  // the non-standard 'interrupted' state (not 'suspended') — so checking only
+  // for 'suspended' misses it, and playback stays dead until a reload. We resume
+  // on any non-running state, on the next user gesture (via playSequence/drone),
+  // and when the page becomes visible/focused again.
+  const liveCtxs = new Set();
+  const AC = window.AudioContext || window.webkitAudioContext;
+
+  function getSeqCtx() {
+    if (!seqCtx) { seqCtx = new AC(); liveCtxs.add(seqCtx); }
+    return seqCtx;
+  }
+  function resumeCtxs() {
+    liveCtxs.forEach(c => {
+      if (c && c.state !== 'running' && c.state !== 'closed') {
+        try { c.resume(); } catch (e) {}
+      }
+    });
+  }
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) resumeCtxs(); });
+    window.addEventListener('focus', resumeCtxs);
+    window.addEventListener('pageshow', resumeCtxs);
+  }
+
   // Stop the current scale: cancel pending visual callbacks and fade out any
   // scheduled oscillators. Safe to call when nothing is playing.
   function stopSequence() {
@@ -77,8 +103,7 @@ const AudioKit = (() => {
   // Current audio-clock time (creates the shared context if needed). Lets the
   // caller schedule contiguous loop passes against the same timeline.
   function currentTime() {
-    if (!seqCtx) seqCtx = new (window.AudioContext || window.webkitAudioContext)();
-    return seqCtx.currentTime;
+    return getSeqCtx().currentTime;
   }
 
   // Plays a sequence of semitone offsets from baseMidi using the cello voice.
@@ -91,9 +116,10 @@ const AudioKit = (() => {
   // looping). Returns the audio-clock time the next contiguous note would start
   // (= start + seq.length * step), so a loop can schedule the next pass exactly.
   function playSequence(baseMidi, seq, opts = {}) {
-    if (!seqCtx) seqCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (seqCtx.state === 'suspended') { try { seqCtx.resume(); } catch (e) {} }
-    const ctx = seqCtx;
+    const ctx = getSeqCtx();
+    // Resume on any non-running state (covers iOS 'interrupted' after a lock),
+    // running inside this user-gesture call so iOS allows it.
+    if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
     const step = opts.step != null ? opts.step : 0.42;
     const gate = Math.max(opts.gate != null ? opts.gate : step * 0.92, 0.04);
     const attack = opts.attack != null ? opts.attack : 0.02;
@@ -151,8 +177,9 @@ const AudioKit = (() => {
 
     function start() {
       if (nodes) return;
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      if (ctx.state === 'suspended') ctx.resume();
+      const ctx = new AC();
+      liveCtxs.add(ctx);
+      if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
       const root = midiToFreq(rootMidi);
 
       const rootOsc = ctx.createOscillator();
@@ -196,7 +223,7 @@ const AudioKit = (() => {
       gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
       [rootOsc, fifthOsc, noise].forEach(o => { try { o.stop(now + 0.25); } catch (e) {} });
-      setTimeout(() => { try { ctx.close(); } catch (e) {} }, 400);
+      setTimeout(() => { try { ctx.close(); } catch (e) {} liveCtxs.delete(ctx); }, 400);
       nodes = null;
     }
 
@@ -382,5 +409,5 @@ const AudioKit = (() => {
     };
   }
 
-  return { FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName, playSequence, stopSequence, currentTime, createDrone, createPolySynth };
+  return { FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName, playSequence, stopSequence, currentTime, createDrone, createPolySynth, resume: resumeCtxs };
 })();
