@@ -438,7 +438,7 @@ function renderStaff(svg, sig, treble) {
   const clef = document.createElementNS(NS, 'text');
   clef.setAttribute('class', 'clef');
   clef.setAttribute('x', clefX);
-  clef.setAttribute('y', treble ? baseY - 1 : baseY - 4);
+  clef.setAttribute('y', baseY - 1);
   clef.setAttribute('font-size', treble ? 22 : 20);
   clef.textContent = treble ? '\u{1D11E}' : '\u{1D122}';
   svg.appendChild(clef);
