@@ -202,7 +202,11 @@
       gap: 0.6em;
     }
     .note-readout {
-      flex: 0 0 auto;
+      /* Fixed-width reservation so the staff to its left never reflows when a
+         played-note name appears/changes (letter + optional accidental). */
+      flex: 0 0 2.6ch;
+      text-align: left;
+      white-space: nowrap;
       color: #9cd8ff;
     }
 
