@@ -126,6 +126,8 @@ function buildSpellMap(root, mode) {
 
 // Returns a function semi -> displayed note name for the given tonal center/scale.
 function makeNamer(root, mode, sig) {
+  // Reference pitch for naming only; the octave is arbitrary since names are
+  // resolved by pitch class (the spelled map and midiToName both key on pc).
   const base = pitchToMidi(root, 4);
   const preferFlats = sig < 0;
   const map = buildSpellMap(root, mode);
@@ -249,6 +251,7 @@ function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaf
   const step = (60 / tempoBpm) / SUBDIVS[subdivIndex].perBeat;
   const art = ARTIC[articulation] || ARTIC.legato;
   const center = document.getElementById('playing-note');
+  const trebleEl = document.getElementById('toggle-treble');
   // When looping without repeating the turnaround, drop a trailing note that
   // duplicates the first (e.g. up-then-down) so the bottom isn't struck twice.
   const noRepeat = loopOn && !repeatEnds && seq.length > 1 && seq[0] === seq[seq.length - 1];
@@ -266,9 +269,8 @@ function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaf
       if (center) center.textContent = name;
       if (rowReadout) rowReadout.textContent = name;
       if (rowStaff) {
-        const treble = document.getElementById('toggle-treble').checked;
         const sig = parseInt(rowStaff.dataset.sig, 10) || 0;
-        highlightOnStaff(rowStaff, baseMidi + semi, name, sig, treble);
+        highlightOnStaff(rowStaff, baseMidi + semi, name, sig, trebleEl.checked);
       }
     },
   });
@@ -290,8 +292,8 @@ function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaf
 }
 
 // --- drone (root + optional fifth), shared engine in audio.js ---
+// Root is set by select() during startup and on every tonal-center change.
 const drone = AudioKit.createDrone();
-drone.setRoot(pitchToMidi(CIRCLE[selectedIndex].root, 3));
 
 // --- UI ---
 function buildCircle() {
@@ -524,17 +526,18 @@ function addLedger(parent, x, y) {
   parent.appendChild(ll);
 }
 
-// Choose the starting octave so a one-octave scale sits centered on the staff
-// for the active clef. staffPosFor places pitch 0 at staff position
+// Choose the starting octave so the played range sits centered on the staff for
+// the active clef. staffPosFor places pitch 0 at staff position
 // (letterIdx + 7*octave - offset), offset 30 treble / 18 bass; lines span
-// positions 0..8 (centre 4) and a one-octave scale spans ~7 positions, so aim
-// the tonic near position 0.5. Treble resolves to octave 4 for every tonic
-// (unchanged); bass drops an octave or two so notes sit on the bass staff
-// instead of floating high above it.
+// positions 0..8 (centre 4). The range tonic..tonic+`octaves` octaves spans
+// ~7*octaves positions, so aim its midpoint (tonic + 3.5*octaves) at the centre.
+// At one octave treble resolves to octave 4 for every tonic (unchanged) and bass
+// drops an octave or two; more octaves drop the start further so the range stays
+// balanced rather than climbing off the top.
 function baseOctaveFor(root, treble) {
   const { letterIdx } = parseTonic(root);
   const offset = treble ? 30 : 18;
-  return Math.round((0.5 + offset - letterIdx) / 7);
+  return Math.round((4 - 3.5 * octaves + offset - letterIdx) / 7);
 }
 
 function buildModes() {
@@ -576,11 +579,14 @@ function buildModes() {
     const namer = makeNamer(root, mode, sig); // spells this scale's notes correctly
     const asc = document.createElement('button');
     asc.type = 'button';
+    // Keep an accessible label even when the word label is hidden on mobile.
+    asc.setAttribute('aria-label', `play ${label} ${display} ${autoDescend ? 'up and down' : 'ascending'}`);
     asc.append(makeArrow(autoDescend ? '▲▼' : '▲'), makeLabel(autoDescend ? 'up + down' : 'ascending'));
     asc.addEventListener('click', () =>
       togglePlay(asc, base, () => (autoDescend ? seqUpDown(mode) : seqAsc(mode)), readout, namer, staff));
     const desc = document.createElement('button');
     desc.type = 'button';
+    desc.setAttribute('aria-label', `play ${label} ${display} descending`);
     desc.append(makeArrow('▼'), makeLabel('descending'));
     desc.addEventListener('click', () => togglePlay(desc, base, () => seqDesc(mode), readout, namer, staff));
     row.append(name, asc, desc);
@@ -593,6 +599,7 @@ function buildModes() {
 function makeArrow(glyph) {
   const s = document.createElement('span');
   s.className = 'btn-arrow';
+  s.setAttribute('aria-hidden', 'true'); // decorative; the button carries an aria-label
   s.textContent = glyph;
   return s;
 }
@@ -639,6 +646,7 @@ function initScaleOptions() {
   oct.addEventListener('input', () => {
     octaves = parseInt(oct.value, 10);
     octVal.textContent = octaves;
+    buildModes(); // base octave is range-dependent, so re-pick it for centering
   });
 
   const tempo = document.getElementById('tempo');
@@ -736,22 +744,31 @@ function applyPrefs() {
   let p;
   try { p = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null'); } catch (e) { return; }
   if (!p || typeof p !== 'object') return;
+  // Validate everything: a stale or hand-edited blob must never produce NaN
+  // (e.g. an out-of-range subdiv would make SUBDIVS[subdivIndex] undefined).
   const setChecked = (id, v) => { if (typeof v === 'boolean') document.getElementById(id).checked = v; };
-  const setValue = (id, v) => { if (v != null) document.getElementById(id).value = v; };
+  const setNum = (id, v, lo, hi) => {
+    const n = Number(v);
+    if (Number.isFinite(n)) document.getElementById(id).value = Math.min(hi, Math.max(lo, n));
+  };
+  const setOption = (id, v) => {
+    const el = document.getElementById(id);
+    if (typeof v === 'string' && [...el.options].some(o => o.value === v)) el.value = v;
+  };
   if (Number.isInteger(p.center) && p.center >= 0 && p.center < CIRCLE.length) selectedIndex = p.center;
   setChecked('toggle-extra', p.extra);
-  setValue('octaves', p.octaves);
-  setValue('tempo', p.tempo);
-  setValue('subdiv', p.subdiv);
+  setNum('octaves', p.octaves, 1, 3);
+  setNum('tempo', p.tempo, 40, 300);
+  setNum('subdiv', p.subdiv, 0, SUBDIVS.length - 1);
   setChecked('loop', p.loop);
   setChecked('repeat-ends', p.repeatEnds);
   setChecked('auto-descend', p.autoDescend);
-  setValue('articulation', p.articulation);
+  setOption('articulation', p.articulation);
   setChecked('toggle-sig', p.sig);
   setChecked('toggle-keysig', p.keysig);
   setChecked('toggle-treble', p.treble);
   setChecked('drone-fifth', p.droneFifth);
-  setValue('drone-volume', p.droneVol);
+  setNum('drone-volume', p.droneVol, 0, 0.4);
 }
 
 // Persist on any control change. The existing per-control handlers run first
