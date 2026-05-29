@@ -8,6 +8,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
   <style>
+    /* Bravura: the SMuFL standard music font, self-hosted so clefs/accidentals
+       render identically on every device (no reliance on the browser's fallback
+       glyphs, whose metrics vary). font-display:block briefly waits rather than
+       flashing a mispositioned fallback glyph. See fonts/OFL.txt. */
+    @font-face {
+      font-family: 'Bravura';
+      src: url('fonts/Bravura.woff2') format('woff2');
+      font-display: block;
+    }
     body {
       margin: 0;
       background: #000;
@@ -146,10 +155,12 @@
     }
     .staff-line { stroke: rgba(255, 255, 255, 0.55); stroke-width: 0.8; }
     .staff-line.ledger { stroke-width: 1; }
-    .clef { fill: #eee; font-family: serif; }
-    .accidental { fill: #9cd8ff; font-size: 11px; font-family: serif; }
+    /* Clefs and accidentals are Bravura (SMuFL) glyphs. Sizes/baselines are set
+       in scales.js to staff-relative SMuFL coordinates. */
+    .clef { fill: #eee; font-family: 'Bravura'; }
+    .accidental { fill: #9cd8ff; font-family: 'Bravura'; }
     .notehead { fill: #9cd8ff; }
-    .note-acc { fill: #9cd8ff; font-size: 10px; font-family: serif; }
+    .note-acc { fill: #9cd8ff; font-family: 'Bravura'; }
 
     .center {
       font-size: 1.4rem;
