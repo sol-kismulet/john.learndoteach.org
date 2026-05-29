@@ -121,11 +121,28 @@
       display: none;
     }
     body.show-staves .row-staff { display: inline-block; }
+    /* The staff sits in normal flow on the left; the played-note name is taken
+       OUT of flow (absolutely positioned) so it can never shift the staff
+       horizontally, and is centered with a transform so it can't jiggle
+       vertically as the text appears/changes. The container reserves a fixed
+       slot for both, so the staff holds one position throughout playback. */
     .staff-and-note {
+      position: relative;
       display: inline-flex;
       align-items: center;
-      gap: 0.45em;
       flex-shrink: 0;
+      width: 3.6ch;                 /* readout-only width when staves are hidden */
+    }
+    body.show-staves .staff-and-note {
+      width: calc(80px + 0.5em + 3.6ch);
+    }
+    .note-readout {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      white-space: nowrap;
+      color: #9cd8ff;
     }
     .staff-line { stroke: rgba(255, 255, 255, 0.55); stroke-width: 0.8; }
     .staff-line.ledger { stroke-width: 1; }
@@ -201,19 +218,6 @@
       justify-content: space-between;
       gap: 0.6em;
     }
-    .note-readout {
-      /* Fixed-width reservation so the staff to its left never reflows when a
-         played-note name appears/changes. min-width:0 is essential: a flex
-         item's default min-width:auto is its content width, which would
-         otherwise override flex-basis and shove the staff once a note name
-         (in the page font) is wider than the basis. */
-      flex: 0 0 3.4ch;
-      min-width: 0;
-      text-align: left;
-      white-space: nowrap;
-      color: #9cd8ff;
-    }
-
     button {
       background: none;
       border: 1px solid #666;
