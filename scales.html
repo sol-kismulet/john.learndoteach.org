@@ -109,15 +109,30 @@
     #clef-toggle { display: none; align-items: center; }
     .clef-ico { font-size: 1.5rem; line-height: 1; color: rgba(255, 255, 255, 0.75); }
 
-    #keysig {
+    /* Per-row mini-staff: tucks into the empty space inside .mode-name, just
+       to the left of the played-note readout. Drawn in SVG units (viewBox
+       0 0 80 32); overflow:visible so ledger lines / very high or low
+       noteheads can poke above or below without being clipped. */
+    .row-staff {
+      width: 80px;
+      height: 32px;
+      overflow: visible;
+      flex-shrink: 0;
       display: none;
-      width: min(220px, 70vw);
-      height: auto;
     }
-    #keysig.active { display: block; }
-    .staff-line { stroke: rgba(255, 255, 255, 0.55); stroke-width: 1; }
+    body.show-staves .row-staff { display: inline-block; }
+    .staff-and-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45em;
+      flex-shrink: 0;
+    }
+    .staff-line { stroke: rgba(255, 255, 255, 0.55); stroke-width: 0.8; }
+    .staff-line.ledger { stroke-width: 1; }
     .clef { fill: #eee; font-family: serif; }
-    .accidental { fill: #9cd8ff; font-size: 22px; font-family: serif; }
+    .accidental { fill: #9cd8ff; font-size: 11px; font-family: serif; }
+    .notehead { fill: #9cd8ff; }
+    .note-acc { fill: #9cd8ff; font-size: 10px; font-family: serif; }
 
     .center {
       font-size: 1.4rem;
@@ -182,7 +197,7 @@
       min-width: 0;
       font-size: 1.2rem;
       display: flex;
-      align-items: baseline;
+      align-items: center;
       justify-content: space-between;
       gap: 0.6em;
     }
@@ -277,7 +292,7 @@
       show additional scales
     </label>
     <label class="switch">
-      <input id="toggle-keysig" type="checkbox">
+      <input id="toggle-keysig" type="checkbox" checked>
       <span class="track"><span class="thumb"></span></span>
       show key signatures
     </label>
@@ -295,8 +310,6 @@
   <svg id="circle" viewBox="0 0 360 360" aria-label="circle of fifths"></svg>
 
   <div class="center">tonal center: <span id="center-label">—</span></div>
-
-  <svg id="keysig" viewBox="0 0 170 150" aria-label="key signature"></svg>
 
   <div class="drone">
     <button id="drone-btn" type="button">drone</button>

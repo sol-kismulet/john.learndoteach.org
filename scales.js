@@ -169,6 +169,9 @@ function clearReadouts() {
   const center = document.getElementById('playing-note');
   if (center) center.textContent = '';
   document.querySelectorAll('.note-readout').forEach(el => { el.textContent = ''; });
+  document.querySelectorAll('.row-staff .staff-note').forEach(g => {
+    while (g.firstChild) g.removeChild(g.firstChild);
+  });
 }
 
 // Reset the play-button/UI state without cancelling audio (lets the last note
@@ -189,15 +192,15 @@ function stopPlayback() {
 
 // Click handler for a play button: toggles stop if it's already this button's
 // scale, otherwise switches to the new scale (never stacks two at once).
-function togglePlay(button, baseMidi, makeSeq, rowReadout, namer) {
+function togglePlay(button, baseMidi, makeSeq, rowReadout, namer, rowStaff) {
   if (playingButton === button) { stopPlayback(); return; }
   if (playingButton) playingButton.classList.remove('playing');
   if (loopTimerId) { clearTimeout(loopTimerId); loopTimerId = null; }
   playingButton = button;
   button.classList.add('playing');
-  currentPlay = { baseMidi, makeSeq, rowReadout, namer };
+  currentPlay = { baseMidi, makeSeq, rowReadout, namer, rowStaff };
   clearReadouts();
-  schedulePass(baseMidi, makeSeq, rowReadout, namer, null, false);
+  schedulePass(baseMidi, makeSeq, rowReadout, namer, null, false, rowStaff);
 }
 
 // Re-trigger the current looping scale so a toggled option takes effect now
@@ -206,14 +209,14 @@ function restartIfLooping() {
   if (playingButton && loopOn && currentPlay) {
     if (loopTimerId) { clearTimeout(loopTimerId); loopTimerId = null; }
     clearReadouts();
-    schedulePass(currentPlay.baseMidi, currentPlay.makeSeq, currentPlay.rowReadout, currentPlay.namer, null, false);
+    schedulePass(currentPlay.baseMidi, currentPlay.makeSeq, currentPlay.rowReadout, currentPlay.namer, null, false, currentPlay.rowStaff);
   }
 }
 
 // Play one pass, then either schedule the next pass exactly on the audio clock
 // (gapless loop) or finish. `when` is the absolute start time (null = default
 // lead-in); `chain` keeps the previous pass's tail so the seam is seamless.
-function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain) {
+function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaff) {
   const seq = makeSeq();
   const step = (60 / tempoBpm) / SUBDIVS[subdivIndex].perBeat;
   const art = ARTIC[articulation] || ARTIC.legato;
@@ -234,6 +237,11 @@ function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain) {
       const name = namer(semi);
       if (center) center.textContent = name;
       if (rowReadout) rowReadout.textContent = name;
+      if (rowStaff) {
+        const treble = document.getElementById('toggle-treble').checked;
+        const sig = CIRCLE[selectedIndex].sig;
+        highlightOnStaff(rowStaff, baseMidi + semi, name, sig, treble);
+      }
     },
   });
   if (loopOn) {
@@ -243,7 +251,7 @@ function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain) {
     const delay = Math.max(0, (nextStart - lead - AudioKit.currentTime()) * 1000);
     loopTimerId = setTimeout(() => {
       if (loopOn && playingButton) {
-        schedulePass(baseMidi, makeSeq, rowReadout, namer, nextStart, true);
+        schedulePass(baseMidi, makeSeq, rowReadout, namer, nextStart, true, rowStaff);
       } else {
         loopTimerId = setTimeout(finishPlayback, Math.max(0, (nextStart - AudioKit.currentTime()) * 1000));
       }
@@ -330,34 +338,79 @@ function select(i) {
   document.getElementById('center-label').textContent = c.alt ? `${c.label} / ${c.alt}` : c.label;
   drone.setRoot(pitchToMidi(CIRCLE[i].root, 3));
   buildModes();
-  renderKeySig();
 }
 
-// Draws the selected key's signature on a staff, in bass or treble clef.
-function renderKeySig() {
-  const svg = document.getElementById('keysig');
-  if (!svg) return;
-  while (svg.firstChild) svg.removeChild(svg.firstChild);
+// --- per-row mini staff ---------------------------------------------------
+// Each scale row gets a small SVG staff (key sig + clef). When that row is
+// playing, the current note is highlighted on the staff so the user learns
+// where each pitch sits on the page. Static parts (lines, clef, key sig) are
+// drawn once when the row is created; only the .staff-note group gets
+// re-drawn on each note (and cleared when playback ends).
+const ROW_STAFF = {
+  width: 80, height: 32,
+  topY: 8, lineGap: 4, stepY: 2,
+  clefX: 4, sigStartX: 22, sigSpacing: 5,
+  noteX: 64,
+};
 
-  const treble = document.getElementById('toggle-treble').checked;
-  const sig = CIRCLE[selectedIndex].sig;
-  const stepY = 8, lineGap = 16, topY = 42, baseY = topY + 4 * lineGap;
-  const x0 = 6, x1 = 162;
-  const posY = (pos) => baseY - pos * stepY;
+const ACC_GLYPHS = { '-2': '𝄫', '-1': '♭', '0': '♮', '1': '♯', '2': '𝄪' };
+
+// Pick the octave so the natural letter pitch is closest to `midi`; lets
+// enharmonic spellings (B♯ vs C, C♭ vs B) land on the right staff letter.
+function staffPosFor(midi, letterIdx, treble) {
+  const naturalPc = LETTER_PC[letterIdx];
+  const octave = Math.round((midi - naturalPc) / 12) - 1;
+  // treble: pos 0 = E4 (bottom line). bass: pos 0 = G2.
+  return (letterIdx + 7 * octave) - (treble ? 30 : 18);
+}
+
+function parseSpelled(name) {
+  if (!name) return null;
+  const li = LETTERS.indexOf(name[0].toUpperCase());
+  if (li < 0) return null;
+  const accMap = { '': 0, '♯': 1, '♭': -1, '𝄪': 2, '𝄫': -2 };
+  const acc = accMap[name.slice(1)];
+  if (acc == null) return null;
+  return { letterIdx: li, acc };
+}
+
+// What accidental does the key signature imply for this letter?
+// +1 / -1 if the letter is sharped/flatted by the sig, else 0.
+function keyDefaultAcc(letterIdx, sig) {
+  const letter = LETTERS[letterIdx];
+  if (sig > 0) return SHARP_ORDER.slice(0, sig).includes(letter) ? 1 : 0;
+  if (sig < 0) return FLAT_ORDER.slice(0, -sig).includes(letter) ? -1 : 0;
+  return 0;
+}
+
+function makeRowStaff(sig, treble) {
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'row-staff');
+  svg.setAttribute('viewBox', `0 0 ${ROW_STAFF.width} ${ROW_STAFF.height}`);
+  svg.setAttribute('aria-hidden', 'true');
+  renderStaff(svg, sig, treble);
+  return svg;
+}
+
+function renderStaff(svg, sig, treble) {
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  const { topY, lineGap, stepY, clefX, sigStartX, sigSpacing, width } = ROW_STAFF;
+  const baseY = topY + 4 * lineGap;
+  const posY = (p) => baseY - p * stepY;
 
   for (let i = 0; i < 5; i++) {
     const ln = document.createElementNS(NS, 'line');
     ln.setAttribute('class', 'staff-line');
-    ln.setAttribute('x1', x0); ln.setAttribute('x2', x1);
+    ln.setAttribute('x1', 2); ln.setAttribute('x2', width - 2);
     ln.setAttribute('y1', topY + i * lineGap); ln.setAttribute('y2', topY + i * lineGap);
     svg.appendChild(ln);
   }
 
   const clef = document.createElementNS(NS, 'text');
   clef.setAttribute('class', 'clef');
-  clef.setAttribute('x', 10);
-  clef.setAttribute('y', treble ? baseY - 4 : baseY - 40);
-  clef.setAttribute('font-size', treble ? 72 : 52);
+  clef.setAttribute('x', clefX);
+  clef.setAttribute('y', treble ? baseY - 1 : baseY - 11);
+  clef.setAttribute('font-size', treble ? 22 : 17);
   clef.textContent = treble ? '\u{1D11E}' : '\u{1D122}';
   svg.appendChild(clef);
 
@@ -365,24 +418,81 @@ function renderKeySig() {
   const count = Math.abs(sig);
   const posArr = sharps ? SHARP_POS_TREBLE : FLAT_POS_TREBLE;
   const glyph = sharps ? '♯' : '♭';
-  const startX = 50, spacing = 14;
   for (let i = 0; i < count; i++) {
     const pos = posArr[i] - (treble ? 0 : 2);
     const t = document.createElementNS(NS, 'text');
     t.setAttribute('class', 'accidental');
-    t.setAttribute('x', startX + i * spacing);
+    t.setAttribute('x', sigStartX + i * sigSpacing);
     t.setAttribute('y', posY(pos));
     t.setAttribute('text-anchor', 'middle');
     t.setAttribute('dominant-baseline', 'central');
     t.textContent = glyph;
     svg.appendChild(t);
   }
+
+  // Empty target group for the highlighted notehead + any ledger lines.
+  const noteG = document.createElementNS(NS, 'g');
+  noteG.setAttribute('class', 'staff-note');
+  svg.appendChild(noteG);
+}
+
+function highlightOnStaff(svg, midi, name, sig, treble) {
+  const noteG = svg.querySelector('.staff-note');
+  if (!noteG) return;
+  while (noteG.firstChild) noteG.removeChild(noteG.firstChild);
+  const parsed = parseSpelled(name);
+  if (!parsed) return;
+  const { letterIdx, acc } = parsed;
+  const pos = staffPosFor(midi, letterIdx, treble);
+
+  const { topY, lineGap, stepY, noteX } = ROW_STAFF;
+  const baseY = topY + 4 * lineGap;
+  const posY = (p) => baseY - p * stepY;
+  const y = posY(pos);
+
+  // Ledger lines (every even pos outside the staff lines 0..8).
+  if (pos < 0) {
+    for (let p = -2; p >= pos; p -= 2) addLedger(noteG, noteX, posY(p));
+  } else if (pos > 8) {
+    for (let p = 10; p <= pos; p += 2) addLedger(noteG, noteX, posY(p));
+  }
+
+  // Show an explicit accidental only when the note differs from the key sig.
+  if (acc !== keyDefaultAcc(letterIdx, sig)) {
+    const a = document.createElementNS(NS, 'text');
+    a.setAttribute('class', 'note-acc');
+    a.setAttribute('x', noteX - 7);
+    a.setAttribute('y', y);
+    a.setAttribute('text-anchor', 'middle');
+    a.setAttribute('dominant-baseline', 'central');
+    a.textContent = ACC_GLYPHS[String(acc)] || '';
+    noteG.appendChild(a);
+  }
+
+  const head = document.createElementNS(NS, 'ellipse');
+  head.setAttribute('class', 'notehead');
+  head.setAttribute('cx', noteX);
+  head.setAttribute('cy', y);
+  head.setAttribute('rx', 3.4);
+  head.setAttribute('ry', 2.5);
+  head.setAttribute('transform', `rotate(-20 ${noteX} ${y})`);
+  noteG.appendChild(head);
+}
+
+function addLedger(parent, x, y) {
+  const ll = document.createElementNS(NS, 'line');
+  ll.setAttribute('class', 'staff-line ledger');
+  ll.setAttribute('x1', x - 5); ll.setAttribute('x2', x + 5);
+  ll.setAttribute('y1', y); ll.setAttribute('y2', y);
+  parent.appendChild(ll);
 }
 
 function buildModes() {
   stopPlayback(); // rebuilding replaces the buttons; don't leave an orphan scale
   const root = CIRCLE[selectedIndex].root;
   const label = CIRCLE[selectedIndex].label;
+  const sig = CIRCLE[selectedIndex].sig;
+  const treble = document.getElementById('toggle-treble').checked;
   const base = pitchToMidi(root, 4);
   const wrap = document.getElementById('modes');
   wrap.innerHTML = '';
@@ -404,21 +514,25 @@ function buildModes() {
     labelEl.className = 'mode-label';
     const display = mode.basicName || mode.name;
     labelEl.textContent = `${label} ${display}`;
-    // Per-row note readout, shown in the empty space before the button so the
-    // sounding note stays visible when the circle is scrolled off-screen.
+    // Staff (key sig) + note-readout sit together on the right of the row, so
+    // the played note appears both on the staff and as text just beside it.
+    const staffNote = document.createElement('span');
+    staffNote.className = 'staff-and-note';
+    const staff = makeRowStaff(sig, treble);
     const readout = document.createElement('span');
     readout.className = 'note-readout';
-    name.append(labelEl, readout);
+    staffNote.append(staff, readout);
+    name.append(labelEl, staffNote);
     const namer = makeNamer(root, mode); // spells this scale's notes correctly
     const asc = document.createElement('button');
     asc.type = 'button';
     asc.append(makeArrow(autoDescend ? '▲▼' : '▲'), makeLabel(autoDescend ? 'up + down' : 'ascending'));
     asc.addEventListener('click', () =>
-      togglePlay(asc, base, () => (autoDescend ? seqUpDown(mode) : seqAsc(mode)), readout, namer));
+      togglePlay(asc, base, () => (autoDescend ? seqUpDown(mode) : seqAsc(mode)), readout, namer, staff));
     const desc = document.createElement('button');
     desc.type = 'button';
     desc.append(makeArrow('▼'), makeLabel('descending'));
-    desc.addEventListener('click', () => togglePlay(desc, base, () => seqDesc(mode), readout, namer));
+    desc.addEventListener('click', () => togglePlay(desc, base, () => seqDesc(mode), readout, namer, staff));
     row.append(name, asc, desc);
     wrap.appendChild(row);
   });
@@ -524,13 +638,18 @@ function initViewToggles() {
 
   const keysig = document.getElementById('toggle-keysig');
   const clefToggle = document.getElementById('clef-toggle');
-  const staff = document.getElementById('keysig');
-  keysig.addEventListener('change', () => {
-    staff.classList.toggle('active', keysig.checked);
+  const applyKeysig = () => {
+    document.body.classList.toggle('show-staves', keysig.checked);
     clefToggle.style.display = keysig.checked ? 'inline-flex' : 'none';
-    renderKeySig();
+  };
+  applyKeysig();
+  keysig.addEventListener('change', applyKeysig);
+
+  document.getElementById('toggle-treble').addEventListener('change', () => {
+    const ks = CIRCLE[selectedIndex].sig;
+    const treble = document.getElementById('toggle-treble').checked;
+    document.querySelectorAll('.row-staff').forEach(s => renderStaff(s, ks, treble));
   });
-  document.getElementById('toggle-treble').addEventListener('change', renderKeySig);
 }
 
 buildCircle();
