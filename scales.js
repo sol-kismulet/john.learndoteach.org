@@ -384,6 +384,19 @@ const ROW_STAFF = {
   noteX: 64,
 };
 
+// Derived staff geometry — one source of truth shared by renderStaff,
+// highlightOnStaff, staffPosFor and baseOctaveFor so they can't drift.
+// Positions count half-line steps up from the bottom line (pos 0 = bottom line,
+// 8 = top); posY maps a position to its y. STAFF_HEIGHT (4 spaces) is the SMuFL
+// em used to size clef/accidental glyphs. CLEF_LINE is the line a clef registers
+// on (treble G = 2, bass F = 6). CLEF_BOTTOM_POS is the letter-position of the
+// bottom line per clef (E4 / G2), used to map a pitch to a staff position.
+const STAFF_BASE_Y = ROW_STAFF.topY + 4 * ROW_STAFF.lineGap;
+const STAFF_HEIGHT = 4 * ROW_STAFF.lineGap;
+const posY = (p) => STAFF_BASE_Y - p * ROW_STAFF.stepY;
+const CLEF_LINE = { treble: 2, bass: 6 };
+const CLEF_BOTTOM_POS = { treble: 30, bass: 18 };
+
 // SMuFL (Bravura) glyph codepoints. Clefs register on a staff line; accidentals
 // register on the staff position they modify (alphabetic baseline = centre).
 const CLEF_G = ''; // gClef (treble)
@@ -395,8 +408,7 @@ const ACC_GLYPHS = { '-2': '', '-1': '', '0': '', '1': '', '2': '
 function staffPosFor(midi, letterIdx, treble) {
   const naturalPc = LETTER_PC[letterIdx];
   const octave = Math.round((midi - naturalPc) / 12) - 1;
-  // treble: pos 0 = E4 (bottom line). bass: pos 0 = G2.
-  return (letterIdx + 7 * octave) - (treble ? 30 : 18);
+  return (letterIdx + 7 * octave) - CLEF_BOTTOM_POS[treble ? 'treble' : 'bass'];
 }
 
 function parseSpelled(name) {
@@ -430,9 +442,7 @@ function makeRowStaff(sig, treble) {
 
 function renderStaff(svg, sig, treble) {
   while (svg.firstChild) svg.removeChild(svg.firstChild);
-  const { topY, lineGap, stepY, clefX, sigStartX, sigSpacing, width } = ROW_STAFF;
-  const baseY = topY + 4 * lineGap;
-  const posY = (p) => baseY - p * stepY;
+  const { topY, lineGap, clefX, sigStartX, sigSpacing, width } = ROW_STAFF;
 
   for (let i = 0; i < 5; i++) {
     const ln = document.createElementNS(NS, 'line');
@@ -445,11 +455,10 @@ function renderStaff(svg, sig, treble) {
   const clef = document.createElementNS(NS, 'text');
   clef.setAttribute('class', 'clef');
   clef.setAttribute('x', clefX);
-  // SMuFL clefs register on a staff line (G clef on the G line, F clef on the F
-  // line) at their baseline; font-size = staff height (4 spaces = 1 SMuFL em),
-  // so the glyph scales to the staff with no per-font fudge factor.
-  clef.setAttribute('y', posY(treble ? 2 : 6)); // G line (pos 2) / F line (pos 6)
-  clef.setAttribute('font-size', 4 * lineGap);
+  // SMuFL clefs register on a staff line at their baseline; font-size = staff
+  // height (1 SMuFL em), so the glyph scales to the staff with no fudge factor.
+  clef.setAttribute('y', posY(CLEF_LINE[treble ? 'treble' : 'bass']));
+  clef.setAttribute('font-size', STAFF_HEIGHT);
   clef.textContent = treble ? CLEF_G : CLEF_F;
   svg.appendChild(clef);
 
@@ -464,7 +473,7 @@ function renderStaff(svg, sig, treble) {
     t.setAttribute('x', sigStartX + i * sigSpacing);
     t.setAttribute('y', posY(pos)); // alphabetic baseline = SMuFL accidental centre
     t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('font-size', 4 * lineGap);
+    t.setAttribute('font-size', STAFF_HEIGHT);
     t.textContent = glyph;
     svg.appendChild(t);
   }
@@ -484,9 +493,7 @@ function highlightOnStaff(svg, midi, name, sig, treble) {
   const { letterIdx, acc } = parsed;
   const pos = staffPosFor(midi, letterIdx, treble);
 
-  const { topY, lineGap, stepY, noteX } = ROW_STAFF;
-  const baseY = topY + 4 * lineGap;
-  const posY = (p) => baseY - p * stepY;
+  const { noteX } = ROW_STAFF;
   const y = posY(pos);
 
   // Ledger lines (every even pos outside the staff lines 0..8).
@@ -503,7 +510,7 @@ function highlightOnStaff(svg, midi, name, sig, treble) {
     a.setAttribute('x', noteX - 8);
     a.setAttribute('y', y); // alphabetic baseline = SMuFL accidental centre
     a.setAttribute('text-anchor', 'middle');
-    a.setAttribute('font-size', 4 * lineGap);
+    a.setAttribute('font-size', STAFF_HEIGHT);
     a.textContent = ACC_GLYPHS[String(acc)] || '';
     noteG.appendChild(a);
   }
@@ -536,7 +543,7 @@ function addLedger(parent, x, y) {
 // balanced rather than climbing off the top.
 function baseOctaveFor(root, treble) {
   const { letterIdx } = parseTonic(root);
-  const offset = treble ? 30 : 18;
+  const offset = CLEF_BOTTOM_POS[treble ? 'treble' : 'bass'];
   return Math.round((4 - 3.5 * octaves + offset - letterIdx) / 7);
 }
 
@@ -714,27 +721,51 @@ function initViewToggles() {
 
 // --- settings persistence -------------------------------------------------
 // Save the user's configuration so a reload (or the occasional iOS audio-
-// recovery refresh) doesn't reset everything. One JSON blob in localStorage.
+// recovery refresh) doesn't reset everything. One JSON blob in localStorage,
+// driven by a single table so reading, restoring (with validation), and change-
+// wiring stay in sync — adding a setting is one entry, not three edits. The
+// tonal center (selectedIndex, not a DOM control) is handled alongside.
 const PREFS_KEY = 'scales:prefs';
+const PREFS = [
+  { id: 'toggle-extra',  key: 'extra',       kind: 'bool',   ev: 'change' },
+  { id: 'octaves',       key: 'octaves',     kind: 'num', min: 1,  max: 3,   ev: 'input' },
+  { id: 'tempo',         key: 'tempo',       kind: 'num', min: 40, max: 300, ev: 'input' },
+  { id: 'subdiv',        key: 'subdiv',      kind: 'num', min: 0,  max: SUBDIVS.length - 1, ev: 'input' },
+  { id: 'loop',          key: 'loop',        kind: 'bool',   ev: 'change' },
+  { id: 'repeat-ends',   key: 'repeatEnds',  kind: 'bool',   ev: 'change' },
+  { id: 'auto-descend',  key: 'autoDescend', kind: 'bool',   ev: 'change' },
+  { id: 'articulation',  key: 'articulation',kind: 'option', ev: 'change' },
+  { id: 'toggle-sig',    key: 'sig',         kind: 'bool',   ev: 'change' },
+  { id: 'toggle-keysig', key: 'keysig',      kind: 'bool',   ev: 'change' },
+  { id: 'toggle-treble', key: 'treble',      kind: 'bool',   ev: 'change' },
+  { id: 'drone-fifth',   key: 'droneFifth',  kind: 'bool',   ev: 'change' },
+  { id: 'drone-volume',  key: 'droneVol',    kind: 'num', min: 0,  max: 0.4, ev: 'input' },
+];
+
+const prefEl = (p) => document.getElementById(p.id);
+
+// Read a control's current value for storage.
+function readPref(p) {
+  const el = prefEl(p);
+  if (p.kind === 'bool') return el.checked;
+  if (p.kind === 'num') return Number(el.value);
+  return el.value;
+}
+
+// Restore a stored value to its control, validating so a stale/hand-edited blob
+// can never produce NaN or an unknown <select> option.
+function writePref(p, v) {
+  const el = prefEl(p);
+  if (p.kind === 'bool') { if (typeof v === 'boolean') el.checked = v; }
+  else if (p.kind === 'num') { const n = Number(v); if (Number.isFinite(n)) el.value = Math.min(p.max, Math.max(p.min, n)); }
+  else if (typeof v === 'string' && [...el.options].some(o => o.value === v)) el.value = v;
+}
 
 function persist() {
   try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify({
-      center: selectedIndex,
-      extra: showExtra,
-      octaves,
-      tempo: tempoBpm,
-      subdiv: subdivIndex,
-      loop: loopOn,
-      repeatEnds,
-      autoDescend,
-      articulation,
-      sig: document.getElementById('toggle-sig').checked,
-      keysig: document.getElementById('toggle-keysig').checked,
-      treble: document.getElementById('toggle-treble').checked,
-      droneFifth: document.getElementById('drone-fifth').checked,
-      droneVol: document.getElementById('drone-volume').value,
-    }));
+    const data = { center: selectedIndex };
+    PREFS.forEach(p => { data[p.key] = readPref(p); });
+    localStorage.setItem(PREFS_KEY, JSON.stringify(data));
   } catch (e) { /* storage unavailable (private mode, etc.) — silently skip */ }
 }
 
@@ -744,41 +775,13 @@ function applyPrefs() {
   let p;
   try { p = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null'); } catch (e) { return; }
   if (!p || typeof p !== 'object') return;
-  // Validate everything: a stale or hand-edited blob must never produce NaN
-  // (e.g. an out-of-range subdiv would make SUBDIVS[subdivIndex] undefined).
-  const setChecked = (id, v) => { if (typeof v === 'boolean') document.getElementById(id).checked = v; };
-  const setNum = (id, v, lo, hi) => {
-    const n = Number(v);
-    if (Number.isFinite(n)) document.getElementById(id).value = Math.min(hi, Math.max(lo, n));
-  };
-  const setOption = (id, v) => {
-    const el = document.getElementById(id);
-    if (typeof v === 'string' && [...el.options].some(o => o.value === v)) el.value = v;
-  };
   if (Number.isInteger(p.center) && p.center >= 0 && p.center < CIRCLE.length) selectedIndex = p.center;
-  setChecked('toggle-extra', p.extra);
-  setNum('octaves', p.octaves, 1, 3);
-  setNum('tempo', p.tempo, 40, 300);
-  setNum('subdiv', p.subdiv, 0, SUBDIVS.length - 1);
-  setChecked('loop', p.loop);
-  setChecked('repeat-ends', p.repeatEnds);
-  setChecked('auto-descend', p.autoDescend);
-  setOption('articulation', p.articulation);
-  setChecked('toggle-sig', p.sig);
-  setChecked('toggle-keysig', p.keysig);
-  setChecked('toggle-treble', p.treble);
-  setChecked('drone-fifth', p.droneFifth);
-  setNum('drone-volume', p.droneVol, 0, 0.4);
+  PREFS.forEach(entry => writePref(entry, p[entry.key]));
 }
 
-// Persist on any control change. The existing per-control handlers run first
-// (registered earlier), so the module state is up to date when persist() reads.
+// Persist on any control change (the tonal center persists via select()).
 function initPersistence() {
-  ['toggle-sig', 'toggle-extra', 'toggle-keysig', 'toggle-treble', 'auto-descend',
-   'repeat-ends', 'loop', 'drone-fifth', 'articulation']
-    .forEach(id => document.getElementById(id).addEventListener('change', persist));
-  ['octaves', 'tempo', 'subdiv', 'drone-volume']
-    .forEach(id => document.getElementById(id).addEventListener('input', persist));
+  PREFS.forEach(p => prefEl(p).addEventListener(p.ev, persist));
 }
 
 applyPrefs();
