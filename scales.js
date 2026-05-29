@@ -438,8 +438,8 @@ function renderStaff(svg, sig, treble) {
   const clef = document.createElementNS(NS, 'text');
   clef.setAttribute('class', 'clef');
   clef.setAttribute('x', clefX);
-  clef.setAttribute('y', treble ? baseY - 1 : baseY - 11);
-  clef.setAttribute('font-size', treble ? 22 : 17);
+  clef.setAttribute('y', treble ? baseY - 1 : baseY - 4);
+  clef.setAttribute('font-size', treble ? 22 : 20);
   clef.textContent = treble ? '\u{1D11E}' : '\u{1D122}';
   svg.appendChild(clef);
 
@@ -516,6 +516,19 @@ function addLedger(parent, x, y) {
   parent.appendChild(ll);
 }
 
+// Choose the starting octave so a one-octave scale sits centered on the staff
+// for the active clef. staffPosFor places pitch 0 at staff position
+// (letterIdx + 7*octave - offset), offset 30 treble / 18 bass; lines span
+// positions 0..8 (centre 4) and a one-octave scale spans ~7 positions, so aim
+// the tonic near position 0.5. Treble resolves to octave 4 for every tonic
+// (unchanged); bass drops an octave or two so notes sit on the bass staff
+// instead of floating high above it.
+function baseOctaveFor(root, treble) {
+  const { letterIdx } = parseTonic(root);
+  const offset = treble ? 30 : 18;
+  return Math.round((0.5 + offset - letterIdx) / 7);
+}
+
 function buildModes() {
   stopPlayback(); // rebuilding replaces the buttons; don't leave an orphan scale
   const treble = document.getElementById('toggle-treble').checked;
@@ -534,7 +547,7 @@ function buildModes() {
     // Each mode carries its own key signature and (when respelled past 7
     // accidentals) its own tonic spelling.
     const { sig, root, label } = modeKey(mode);
-    const base = pitchToMidi(root, 4);
+    const base = pitchToMidi(root, baseOctaveFor(root, treble));
     const row = document.createElement('div');
     row.className = 'mode-row';
     const name = document.createElement('span');
@@ -674,11 +687,9 @@ function initViewToggles() {
   applyKeysig();
   keysig.addEventListener('change', applyKeysig);
 
-  document.getElementById('toggle-treble').addEventListener('change', () => {
-    const treble = document.getElementById('toggle-treble').checked;
-    document.querySelectorAll('.row-staff').forEach(s =>
-      renderStaff(s, parseInt(s.dataset.sig, 10) || 0, treble));
-  });
+  // Rebuild rows on clef change: the base octave is clef-dependent (so the
+  // scale stays centered on whichever staff), so we re-pick it, not just redraw.
+  document.getElementById('toggle-treble').addEventListener('change', buildModes);
 }
 
 buildCircle();
