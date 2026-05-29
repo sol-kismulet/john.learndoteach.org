@@ -366,6 +366,7 @@ function select(i) {
   document.getElementById('center-label').textContent = c.alt ? `${c.label} / ${c.alt}` : c.label;
   drone.setRoot(pitchToMidi(CIRCLE[i].root, 3));
   buildModes();
+  persist();
 }
 
 // --- per-row mini staff ---------------------------------------------------
@@ -616,6 +617,7 @@ function initDroneControls() {
     }
   });
   const fifth = document.getElementById('drone-fifth');
+  drone.setFifth(fifth.checked); // honor a restored value
   fifth.addEventListener('change', () => drone.setFifth(fifth.checked));
   const vol = document.getElementById('drone-volume');
   drone.setVolume(parseFloat(vol.value));
@@ -624,6 +626,7 @@ function initDroneControls() {
 
 function initScaleOptions() {
   const ad = document.getElementById('auto-descend');
+  autoDescend = ad.checked; // honor a restored value
   ad.addEventListener('change', () => {
     autoDescend = ad.checked;
     buildModes();
@@ -677,9 +680,11 @@ function initScaleOptions() {
 function initViewToggles() {
   const svg = document.getElementById('circle');
   const sig = document.getElementById('toggle-sig');
+  svg.classList.toggle('show-sig', sig.checked); // honor a restored value
   sig.addEventListener('change', () => svg.classList.toggle('show-sig', sig.checked));
 
   const extra = document.getElementById('toggle-extra');
+  showExtra = extra.checked; // honor a restored value
   extra.addEventListener('change', () => {
     showExtra = extra.checked;
     buildModes();
@@ -699,8 +704,70 @@ function initViewToggles() {
   document.getElementById('toggle-treble').addEventListener('change', buildModes);
 }
 
+// --- settings persistence -------------------------------------------------
+// Save the user's configuration so a reload (or the occasional iOS audio-
+// recovery refresh) doesn't reset everything. One JSON blob in localStorage.
+const PREFS_KEY = 'scales:prefs';
+
+function persist() {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({
+      center: selectedIndex,
+      extra: showExtra,
+      octaves,
+      tempo: tempoBpm,
+      subdiv: subdivIndex,
+      loop: loopOn,
+      repeatEnds,
+      autoDescend,
+      articulation,
+      sig: document.getElementById('toggle-sig').checked,
+      keysig: document.getElementById('toggle-keysig').checked,
+      treble: document.getElementById('toggle-treble').checked,
+      droneFifth: document.getElementById('drone-fifth').checked,
+      droneVol: document.getElementById('drone-volume').value,
+    }));
+  } catch (e) { /* storage unavailable (private mode, etc.) — silently skip */ }
+}
+
+// Apply saved settings to the DOM controls (and selectedIndex) BEFORE the init
+// functions read them, so the restored values take effect on load.
+function applyPrefs() {
+  let p;
+  try { p = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null'); } catch (e) { return; }
+  if (!p || typeof p !== 'object') return;
+  const setChecked = (id, v) => { if (typeof v === 'boolean') document.getElementById(id).checked = v; };
+  const setValue = (id, v) => { if (v != null) document.getElementById(id).value = v; };
+  if (Number.isInteger(p.center) && p.center >= 0 && p.center < CIRCLE.length) selectedIndex = p.center;
+  setChecked('toggle-extra', p.extra);
+  setValue('octaves', p.octaves);
+  setValue('tempo', p.tempo);
+  setValue('subdiv', p.subdiv);
+  setChecked('loop', p.loop);
+  setChecked('repeat-ends', p.repeatEnds);
+  setChecked('auto-descend', p.autoDescend);
+  setValue('articulation', p.articulation);
+  setChecked('toggle-sig', p.sig);
+  setChecked('toggle-keysig', p.keysig);
+  setChecked('toggle-treble', p.treble);
+  setChecked('drone-fifth', p.droneFifth);
+  setValue('drone-volume', p.droneVol);
+}
+
+// Persist on any control change. The existing per-control handlers run first
+// (registered earlier), so the module state is up to date when persist() reads.
+function initPersistence() {
+  ['toggle-sig', 'toggle-extra', 'toggle-keysig', 'toggle-treble', 'auto-descend',
+   'repeat-ends', 'loop', 'drone-fifth', 'articulation']
+    .forEach(id => document.getElementById(id).addEventListener('change', persist));
+  ['octaves', 'tempo', 'subdiv', 'drone-volume']
+    .forEach(id => document.getElementById(id).addEventListener('input', persist));
+}
+
+applyPrefs();
 buildCircle();
 initDroneControls();
 initScaleOptions();
 initViewToggles();
+initPersistence();
 select(selectedIndex);
