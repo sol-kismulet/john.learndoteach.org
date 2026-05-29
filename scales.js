@@ -381,7 +381,11 @@ const ROW_STAFF = {
   noteX: 64,
 };
 
-const ACC_GLYPHS = { '-2': '𝄫', '-1': '♭', '0': '♮', '1': '♯', '2': '𝄪' };
+// SMuFL (Bravura) glyph codepoints. Clefs register on a staff line; accidentals
+// register on the staff position they modify (alphabetic baseline = centre).
+const CLEF_G = ''; // gClef (treble)
+const CLEF_F = ''; // fClef (bass)
+const ACC_GLYPHS = { '-2': '', '-1': '', '0': '', '1': '', '2': '' };
 
 // Pick the octave so the natural letter pitch is closest to `midi`; lets
 // enharmonic spellings (B♯ vs C, C♭ vs B) land on the right staff letter.
@@ -438,23 +442,26 @@ function renderStaff(svg, sig, treble) {
   const clef = document.createElementNS(NS, 'text');
   clef.setAttribute('class', 'clef');
   clef.setAttribute('x', clefX);
-  clef.setAttribute('y', baseY - 1);
-  clef.setAttribute('font-size', treble ? 22 : 20);
-  clef.textContent = treble ? '\u{1D11E}' : '\u{1D122}';
+  // SMuFL clefs register on a staff line (G clef on the G line, F clef on the F
+  // line) at their baseline; font-size = staff height (4 spaces = 1 SMuFL em),
+  // so the glyph scales to the staff with no per-font fudge factor.
+  clef.setAttribute('y', posY(treble ? 2 : 6)); // G line (pos 2) / F line (pos 6)
+  clef.setAttribute('font-size', 4 * lineGap);
+  clef.textContent = treble ? CLEF_G : CLEF_F;
   svg.appendChild(clef);
 
   const sharps = sig > 0;
   const count = Math.abs(sig);
   const posArr = sharps ? SHARP_POS_TREBLE : FLAT_POS_TREBLE;
-  const glyph = sharps ? '♯' : '♭';
+  const glyph = sharps ? ACC_GLYPHS['1'] : ACC_GLYPHS['-1'];
   for (let i = 0; i < count; i++) {
     const pos = posArr[i] - (treble ? 0 : 2);
     const t = document.createElementNS(NS, 'text');
     t.setAttribute('class', 'accidental');
     t.setAttribute('x', sigStartX + i * sigSpacing);
-    t.setAttribute('y', posY(pos));
+    t.setAttribute('y', posY(pos)); // alphabetic baseline = SMuFL accidental centre
     t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('dominant-baseline', 'central');
+    t.setAttribute('font-size', 4 * lineGap);
     t.textContent = glyph;
     svg.appendChild(t);
   }
@@ -490,10 +497,10 @@ function highlightOnStaff(svg, midi, name, sig, treble) {
   if (acc !== keyDefaultAcc(letterIdx, sig)) {
     const a = document.createElementNS(NS, 'text');
     a.setAttribute('class', 'note-acc');
-    a.setAttribute('x', noteX - 7);
-    a.setAttribute('y', y);
+    a.setAttribute('x', noteX - 8);
+    a.setAttribute('y', y); // alphabetic baseline = SMuFL accidental centre
     a.setAttribute('text-anchor', 'middle');
-    a.setAttribute('dominant-baseline', 'central');
+    a.setAttribute('font-size', 4 * lineGap);
     a.textContent = ACC_GLYPHS[String(acc)] || '';
     noteG.appendChild(a);
   }
