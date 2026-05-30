@@ -72,6 +72,39 @@
     .node.selected circle { fill: #9cd8ff; stroke: #9cd8ff; }
     .node.selected text { fill: #06121c; }
 
+    /* --- mini keyboard (chord visualization) --- */
+    .mini-kbd {
+      display: flex;
+      align-items: flex-start;
+      height: 70px;
+      margin: 0 auto;
+    }
+    .mini-key { position: relative; box-sizing: border-box; }
+    .mini-key.white {
+      flex: 0 0 18px;
+      height: 100%;
+      background: linear-gradient(#fafafa, #e6e6e6);
+      border: 1px solid #2a2a2a;
+      border-radius: 0 0 3px 3px;
+    }
+    .mini-key.black {
+      position: absolute;
+      top: 0;
+      right: -32%;
+      width: 64%;
+      height: 62%;
+      background: linear-gradient(#2a2a2a, #000);
+      border: 1px solid #000;
+      border-radius: 0 0 3px 3px;
+      z-index: 2;
+    }
+    .mini-key.white.on { background: linear-gradient(#bfe6ff, #9cd8ff); }
+    .mini-key.black.on { background: linear-gradient(#6fb4d6, #2f6f8f); }
+    @media (max-width: 600px) {
+      .mini-kbd { height: 56px; }
+      .mini-key.white { flex: 0 0 14px; }
+    }
+
     /* --- controls --- */
     .controls {
       display: flex;
@@ -92,6 +125,37 @@
       padding: 0.2em 0.35em;
     }
     .ctl select:hover { border-color: #9cd8ff; }
+
+    /* --- toggle switch (matches scales/keyboard pages) --- */
+    .switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45em;
+      cursor: pointer;
+      user-select: none;
+    }
+    .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .switch .track {
+      width: 2.4em;
+      height: 1.2em;
+      border: 1px solid #666;
+      border-radius: 1em;
+      position: relative;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .switch .thumb {
+      position: absolute;
+      top: 50%;
+      left: 0.15em;
+      width: 0.9em;
+      height: 0.9em;
+      transform: translateY(-50%);
+      background: #ddd;
+      border-radius: 50%;
+      transition: left 0.15s, background 0.15s;
+    }
+    .switch input:checked + .track { background: #2f6f8f; border-color: #9cd8ff; }
+    .switch input:checked + .track .thumb { left: calc(100% - 1.05em); background: #9cd8ff; }
 
     /* --- focus panel ("now showing") --- */
     .focus {
@@ -150,6 +214,8 @@
 
   <svg id="circle" viewBox="0 0 360 360" aria-label="circle of fifths root picker"></svg>
 
+  <div class="mini-kbd" id="mini-kbd" aria-label="chord on the keyboard"></div>
+
   <div class="controls">
     <label class="ctl">
       chord
@@ -169,6 +235,11 @@
     <div class="chord-quality" id="chord-quality">&nbsp;</div>
     <div class="chord-notes" id="chord-notes">&nbsp;</div>
     <div class="play-controls">
+      <label class="switch">
+        <input id="invert" type="checkbox">
+        <span class="track"><span class="thumb"></span></span>
+        first inversion
+      </label>
       <button id="play-block" type="button">play chord</button>
       <button id="play-arp" type="button">arpeggiate</button>
     </div>

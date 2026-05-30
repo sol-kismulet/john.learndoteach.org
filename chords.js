@@ -86,34 +86,43 @@ const { pitchToMidi } = AudioKit;
 
 let rootIndex = 0;        // index into CIRCLE
 let qualityIndex = 0;     // index into QUALITIES
+let firstInversion = false;
 
 // --- chord building --------------------------------------------------------
-function spellChord(root, quality) {
+// One source of truth: build the voicing as an ordered list of { midi, name },
+// applying first inversion if active (the root jumps up an octave so the 3rd
+// — or whatever the next tone is — becomes the bass). Everything downstream
+// (display, keyboard, playback) reads from this list.
+function buildVoicing(root, quality) {
   const { letterIdx, pc } = parseRoot(root);
-  return quality.intervals.map((iv, i) => {
-    const li = (letterIdx + quality.letterSteps[i]) % 7;
-    return spellPc(li, (pc + iv) % 12);
-  });
-}
-
-function chordName(root, quality) {
-  const { letterIdx, pc } = parseRoot(root);
-  return spellPc(letterIdx, pc) + quality.symbol;
-}
-
-// MIDI notes for playback, rooted near middle C so chords sit in a sweet spot.
-function chordMidis(root, quality) {
   const base = pitchToMidi(root, 4);
-  return quality.intervals.map(iv => base + iv);
+  const tones = quality.intervals.map((iv, i) => ({
+    midi: base + iv,
+    name: spellPc((letterIdx + quality.letterSteps[i]) % 7, (pc + iv) % 12),
+  }));
+  if (firstInversion && tones.length > 1) {
+    tones[0].midi += 12;
+    tones.sort((a, b) => a.midi - b.midi);
+  }
+  return tones;
+}
+
+function chordName(root, quality, voicing) {
+  const { letterIdx, pc } = parseRoot(root);
+  const base = spellPc(letterIdx, pc) + quality.symbol;
+  if (!firstInversion || quality.intervals.length < 2) return base;
+  // Slash chord: lowest voiced tone over the chord symbol (e.g. C/E).
+  return base + '/' + voicing[0].name;
 }
 
 // --- playback (poly synth in audio.js) -------------------------------------
+// AudioKit installs global resume handlers on visibilitychange + first gesture,
+// so no per-page wiring is needed for sound to recover after backgrounding.
 const synth = AudioKit.createPolySynth();
-
-// iOS gates Web Audio behind a user gesture; resume on any interaction.
+// iOS still needs the silent-buffer kickstart on first user gesture for sound
+// to come out at all on a fresh page load.
 ['pointerdown', 'touchstart', 'mousedown', 'keydown'].forEach(ev =>
   window.addEventListener(ev, () => synth.unlock(), true));
-document.addEventListener('visibilitychange', () => { if (!document.hidden) synth.unlock(); });
 
 let playTimers = [];
 let activeBtn = null;
@@ -122,6 +131,7 @@ function stopChord() {
   playTimers.forEach(id => clearTimeout(id));
   playTimers = [];
   synth.allOff();
+  clearHighlights();
   if (activeBtn) { activeBtn.classList.remove('playing'); activeBtn = null; }
 }
 
@@ -131,17 +141,57 @@ function play(mode, btn) {
   const wasActive = activeBtn === btn;
   stopChord();
   if (wasActive) return; // clicking the lit button again stops
-  const midis = chordMidis(CIRCLE[rootIndex].root, QUALITIES[qualityIndex]);
+  const midis = buildVoicing(CIRCLE[rootIndex].root, QUALITIES[qualityIndex]).map(t => t.midi);
   activeBtn = btn;
   btn.classList.add('playing');
   if (mode === 'block') {
-    midis.forEach(m => synth.noteOn(m));
+    midis.forEach(m => { synth.noteOn(m); highlightKey(m, true); });
     playTimers.push(setTimeout(stopChord, 1800));
   } else {
     const step = 180; // ms between rolled notes
-    midis.forEach((m, i) => playTimers.push(setTimeout(() => synth.noteOn(m), i * step)));
+    midis.forEach((m, i) => playTimers.push(setTimeout(() => {
+      synth.noteOn(m);
+      highlightKey(m, true);
+    }, i * step)));
     playTimers.push(setTimeout(stopChord, midis.length * step + 1400));
   }
+}
+
+// --- mini keyboard ---------------------------------------------------------
+// A small two-octave-plus piano under the circle that lights up to show the
+// chord as it sounds. C4–D6 covers every supported quality in both root
+// position and first inversion (e.g. B add9 first inversion tops out at C♯6).
+const KBD_LOW = 60, KBD_HIGH = 86;
+const WHITE_PCS = new Set([0, 2, 4, 5, 7, 9, 11]);
+const pcOf = m => ((m % 12) + 12) % 12;
+
+function buildMiniKeyboard() {
+  const k = document.getElementById('mini-kbd');
+  for (let m = KBD_LOW; m <= KBD_HIGH; m++) {
+    if (!WHITE_PCS.has(pcOf(m))) continue;
+    const w = document.createElement('div');
+    w.className = 'mini-key white';
+    w.dataset.midi = m;
+    // The black key (if any) sits as a child of the white key to its left so
+    // it straddles the boundary cleanly — same trick as the keyboard page.
+    const bm = m + 1;
+    if (bm <= KBD_HIGH && !WHITE_PCS.has(pcOf(bm))) {
+      const b = document.createElement('div');
+      b.className = 'mini-key black';
+      b.dataset.midi = bm;
+      w.appendChild(b);
+    }
+    k.appendChild(w);
+  }
+}
+
+function highlightKey(midi, on) {
+  const el = document.querySelector(`.mini-key[data-midi="${midi}"]`);
+  if (el) el.classList.toggle('on', on);
+}
+
+function clearHighlights() {
+  document.querySelectorAll('.mini-key.on').forEach(el => el.classList.remove('on'));
 }
 
 // --- UI --------------------------------------------------------------------
@@ -216,18 +266,25 @@ function renderFocus() {
   stopChord(); // changing the chord shouldn't leave the old one ringing
   const root = CIRCLE[rootIndex].root;
   const quality = QUALITIES[qualityIndex];
-  document.getElementById('chord-name').textContent = chordName(root, quality);
-  document.getElementById('chord-quality').textContent = quality.label;
-  document.getElementById('chord-notes').textContent = spellChord(root, quality).join(' – ');
+  const voicing = buildVoicing(root, quality);
+  document.getElementById('chord-name').textContent = chordName(root, quality, voicing);
+  document.getElementById('chord-quality').textContent =
+    quality.label + (firstInversion && quality.intervals.length > 1 ? ' (1st inversion)' : '');
+  document.getElementById('chord-notes').textContent = voicing.map(t => t.name).join(' – ');
 }
 
 document.getElementById('tone').addEventListener('change', e => {
   stopChord();
   synth.setInstrument(e.target.value);
 });
+document.getElementById('invert').addEventListener('change', e => {
+  firstInversion = e.target.checked;
+  renderFocus();
+});
 document.getElementById('play-block').addEventListener('click', e => play('block', e.currentTarget));
 document.getElementById('play-arp').addEventListener('click', e => play('arp', e.currentTarget));
 
 buildCircle();
 buildQualityMenu();
+buildMiniKeyboard();
 selectRoot(0);
