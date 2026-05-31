@@ -128,10 +128,12 @@ let loopTimerId = null; // pending timer that schedules the next loop pass
 // Note value per beat: how many scale notes fit in one quarter-note beat.
 let subdivIndex = 0;
 const SUBDIVS = [
-  { label: '♩', name: 'quarter',   perBeat: 1 },
-  { label: '♪', name: 'eighth',    perBeat: 2 },
-  { label: '♪³', name: 'triplet',  perBeat: 3 },
-  { label: '♬', name: 'sixteenth', perBeat: 4 },
+  { label: '𝅝',  name: 'whole',     perBeat: 0.25 },
+  { label: '𝅗𝅥',  name: 'half',      perBeat: 0.5  },
+  { label: '♩',  name: 'quarter',   perBeat: 1 },
+  { label: '♪',  name: 'eighth',    perBeat: 2 },
+  { label: '♪³', name: 'triplet',   perBeat: 3 },
+  { label: '♬',  name: 'sixteenth', perBeat: 4 },
 ];
 
 // gate = fraction of the beat the note sounds; sustain = held level; atk/release
